@@ -112,8 +112,6 @@ next_state_generator::next_state_generator(
                                                                     summand.condition_parameters.size());
     std::vector<atermpp::aterm_int> dummy(summand.condition_arguments_function.arity(),
                                           atermpp::aterm_int(static_cast<std::size_t>(0)));
-    summand.condition_arguments_function_dummy = atermpp::aterm_appl(summand.condition_arguments_function,
-                                                                     dummy.begin(), dummy.end());
 
     m_summands.push_back(summand);
   }

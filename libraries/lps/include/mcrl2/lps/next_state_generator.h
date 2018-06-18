@@ -34,9 +34,7 @@ class next_state_generator
     typedef atermpp::term_appl<data::data_expression> enumeration_cache_key;
     typedef std::list<data::data_expression_list> enumeration_cache_value;
 
-    typedef data::rewriter rewriter_t;
     typedef data::enumerator_algorithm_with_iterator<> enumerator;
-    typedef enumerator::iterator enumerator_iterator_t;
     typedef std::deque<data::enumerator_list_element_with_substitution<>> enumerator_queue;
 
     typedef data::rewriter::substitution_type rewriter_substitution;
@@ -60,7 +58,6 @@ class next_state_generator
 
       std::vector<std::size_t> condition_parameters;
       atermpp::function_symbol condition_arguments_function;
-      atermpp::aterm_appl condition_arguments_function_dummy;
       std::map<enumeration_cache_key, enumeration_cache_value> enumeration_cache;
     };
 
