@@ -56,6 +56,7 @@ class next_state_generator
       std::vector<next_state_action_label> action_label;
       data::data_expression time;
 
+      // enumeration caching
       std::vector<std::size_t> condition_parameters;
       atermpp::function_symbol condition_arguments_function;
       std::map<enumeration_cache_key, enumeration_cache_value> enumeration_cache;
@@ -185,7 +186,6 @@ class next_state_generator
         }
 
         void increment();
-        bool summand_finished();
     };
 
   protected:
