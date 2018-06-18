@@ -30,7 +30,7 @@ tools:
   t3:
     input: [l4, l3]
     output: [l5]
-    args: []
+    args: [--optimization-level=3]
     name: pbessolve
   t4:
     input: [l5, l2]

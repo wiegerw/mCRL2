@@ -64,11 +64,11 @@ class lps2lts_algorithm
   private:
     lts_generation_options m_options;
     next_state_generator *m_generator;
-    next_state_generator::summand_subset_t *m_main_subset;
+    next_state_generator::summand_subset *m_main_subset;
 
     bool m_use_confluence_reduction;
-    next_state_generator::summand_subset_t m_nonprioritized_subset;
-    next_state_generator::summand_subset_t m_prioritized_subset;
+    next_state_generator::summand_subset m_nonprioritized_subset;
+    next_state_generator::summand_subset m_prioritized_subset;
 
     atermpp::indexed_set<lps::state> m_state_numbers;
     bit_hash_table m_bit_hash_table;
@@ -80,7 +80,7 @@ class lps2lts_algorithm
     bool m_maintain_traces;
     bool m_value_prioritize;
 
-    next_state_generator::summand_subset_t m_tau_summands;
+    next_state_generator::summand_subset m_tau_summands;
 
     std::vector<bool> m_detected_action_summands;
 
@@ -89,7 +89,7 @@ class lps2lts_algorithm
 
     std::size_t m_num_states;
     std::size_t m_num_transitions;
-    next_state_generator::transition_t::state_probability_list m_initial_states;
+    next_state_generator::transition::state_probability_list m_initial_states;
     std::size_t m_level;
 
     std::unordered_set<lps::state> non_divergent_states;  // This set is filled with states proven not to be divergent, 
@@ -128,15 +128,15 @@ class lps2lts_algorithm
   private:
     data::data_expression_vector generator_state(const lps::state& storage_state);
     lps::state storage_state(const data::data_expression_vector& generator_state);
-    void set_prioritised_representatives(next_state_generator::transition_t::state_probability_list& states);
+    void set_prioritised_representatives(next_state_generator::transition::state_probability_list& states);
     lps::state get_prioritised_representative(const lps::state& state1);
-    void value_prioritize(std::vector<next_state_generator::transition_t>& transitions);
+    void value_prioritize(std::vector<next_state_generator::transition>& transitions);
     bool save_trace(const lps::state& state1, const std::string& filename);
-    bool save_trace(const lps::state& state1, const next_state_generator::transition_t& transition, const std::string& filename);
+    bool save_trace(const lps::state& state1, const next_state_generator::transition& transition, const std::string& filename);
     void construct_trace(const lps::state& state1, mcrl2::trace::Trace& trace);
 
-    bool is_nondeterministic(std::vector<lps2lts_algorithm::next_state_generator::transition_t>& transitions,
-                             next_state_generator::transition_t& nondeterminist_transition);
+    bool is_nondeterministic(std::vector<lps2lts_algorithm::next_state_generator::transition>& transitions,
+                             next_state_generator::transition& nondeterminist_transition);
     template <class COUNTER_EXAMPLE_GENERATOR>
     bool search_divergence(const detail::state_index_pair<COUNTER_EXAMPLE_GENERATOR>& state, 
                            std::set<lps::state>& current_path, std::set<lps::state>& visited, 
@@ -144,33 +144,33 @@ class lps2lts_algorithm
     template <class COUNTER_EXAMPLE_GENERATOR>
     void check_divergence(const detail::state_index_pair<COUNTER_EXAMPLE_GENERATOR>& state, 
                           COUNTER_EXAMPLE_GENERATOR divergence_loop);
-    void save_actions(const lps::state& state, const next_state_generator::transition_t& transition);
+    void save_actions(const lps::state& state, const next_state_generator::transition& transition);
     void save_deadlock(const lps::state& state);
-    void save_nondeterministic_state(const lps::state& state, const next_state_generator::transition_t& nondeterminist_transition);
+    void save_nondeterministic_state(const lps::state& state, const next_state_generator::transition& nondeterminist_transition);
     void save_error(const lps::state& state);
     std::pair<std::size_t, bool> add_target_state(const lps::state& source_state, const lps::state& target_state);
-    bool add_transition(const lps::state& source_state, const next_state_generator::transition_t& transition);
+    bool add_transition(const lps::state& source_state, const next_state_generator::transition& transition);
     void get_transitions(const lps::state& state,
-                         std::vector<lps2lts_algorithm::next_state_generator::transition_t>& transitions,
-                         next_state_generator::enumerator_queue_t& enumeration_queue
+                         std::vector<lps2lts_algorithm::next_state_generator::transition>& transitions,
+                         next_state_generator::enumerator_queue& enumeration_queue
     );
     void generate_lts_breadth_todo_max_is_npos();
-    void generate_lts_breadth_todo_max_is_not_npos(const next_state_generator::transition_t::state_probability_list& initial_states);
-    void generate_lts_breadth_bithashing(const next_state_generator::transition_t::state_probability_list& initial_states);
-    void generate_lts_depth(const next_state_generator::transition_t::state_probability_list& initial_states);
-    void generate_lts_random(const next_state_generator::transition_t::state_probability_list& initial_states);
+    void generate_lts_breadth_todo_max_is_not_npos(const next_state_generator::transition::state_probability_list& initial_states);
+    void generate_lts_breadth_bithashing(const next_state_generator::transition::state_probability_list& initial_states);
+    void generate_lts_depth(const next_state_generator::transition::state_probability_list& initial_states);
+    void generate_lts_random(const next_state_generator::transition::state_probability_list& initial_states);
     void print_target_distribution_in_aut_format(
-               const lps::next_state_generator::transition_t::state_probability_list& state_probability_list,
+               const lps::next_state_generator::transition::state_probability_list& state_probability_list,
                const std::size_t last_state_number,
                const lps::state& source_state);
     void print_target_distribution_in_aut_format(
-                const lps::next_state_generator::transition_t::state_probability_list& state_probability_list,
+                const lps::next_state_generator::transition::state_probability_list& state_probability_list,
                 const lps::state& source_state);
     probabilistic_state<std::size_t, lps::probabilistic_data_expression> transform_initial_probabilistic_state_list
-                 (const next_state_generator::transition_t::state_probability_list& initial_states);
+                 (const next_state_generator::transition::state_probability_list& initial_states);
     probabilistic_state<std::size_t, lps::probabilistic_data_expression> create_a_probabilistic_state_from_target_distribution(
                const std::size_t base_state_number,
-               const next_state_generator::transition_t::state_probability_list& other_probabilities,
+               const next_state_generator::transition::state_probability_list& other_probabilities,
                const lps::state& source_state);
 
 

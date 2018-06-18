@@ -39,9 +39,9 @@ class bit_hash_table
     {};
 
 
-    void add_states(lps::next_state_generator::transition_t::state_probability_list states)
+    void add_states(lps::next_state_generator::transition::state_probability_list states)
     {
-      for(lps::next_state_generator::transition_t::state_probability_list::const_iterator i=states.begin(); i!=states.end(); ++i)
+      for(lps::next_state_generator::transition::state_probability_list::const_iterator i=states.begin(); i!=states.end(); ++i)
       {
         add_state(i->state());
       }

@@ -165,12 +165,12 @@ std::vector<simulation::transition_t> simulation::transitions(const state& sourc
   try
   {
     std::vector<simulation::transition_t> output;
-    next_state_generator::enumerator_queue_t enumeration_queue;
+    next_state_generator::enumerator_queue enumeration_queue;
     for (next_state_generator::iterator i = m_generator.begin(source_state, &enumeration_queue); i != m_generator.end(); i++)
     {
       transition_t transition;
-      transition.destination = i->target_state();
-      transition.action = i->action();
+      transition.destination = i->target_state;
+      transition.action = i->action;
       output.push_back(transition);
     }
     return output;
