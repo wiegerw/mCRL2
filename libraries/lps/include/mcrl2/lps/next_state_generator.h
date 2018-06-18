@@ -244,11 +244,6 @@ class next_state_generator
           }
         }
 
-        bool is_not_false(const next_state_summand& summand)
-        {
-          return m_generator->m_rewriter(summand.condition, m_pruning_substitution) != data::sort_bool::false_();
-        }
-
         atermpp::detail::shared_subset<next_state_summand>::iterator begin(const lps::state& state)
         {
           for (std::size_t m_pruning_parameter: m_pruning_parameters)
