@@ -19,25 +19,6 @@ using namespace mcrl2::lps;
 using namespace mcrl2::lps::detail;
 
 // First we provide two classes, that represent lambdas.
-class rewriter_class
-{
-  protected:
-    const rewriter& m_r;
-    mutable_indexed_substitution<>& m_sigma;
-
-  public:
-    rewriter_class(const rewriter& r, mutable_indexed_substitution<>& sigma)
-            : m_r(r),
-              m_sigma(sigma)
-    {
-    }
-
-    const data_expression operator()(const data_expression& t) const
-    {
-      return m_r(t, m_sigma);
-    }
-};
-
 class state_applier
 {
   protected:
@@ -394,13 +375,11 @@ const next_state_generator::transition::state_probability_list next_state_genera
         const data::data_expression_vector& state_args,
         rewriter_substitution& sigma)
 {
-  rewriter_class r(m_rewriter, sigma);
   transition::state_probability_list resulting_state_probability_list;
   if (dist.variables().empty())
   {
-    const lps::state target_state(state_args.begin(), state_args.size(), r);
-    resulting_state_probability_list.push_front(
-            state_probability_pair(target_state, probabilistic_data_expression::one()));
+    const lps::state target_state(state_args.begin(), state_args.size(), [&](const data::data_expression& x) { return m_rewriter(x, sigma); });
+    resulting_state_probability_list.push_front(state_probability_pair(target_state, probabilistic_data_expression::one()));
   }
   else
   {
@@ -425,14 +404,11 @@ const next_state_generator::transition::state_probability_list next_state_genera
          probabilistic_solution != enumerator.end(); ++probabilistic_solution)
     {
       probabilistic_solution->add_assignments(dist.variables(), sigma, m_rewriter);
-      rewriter_class r(m_rewriter, sigma);
-      const lps::state target_state(state_args.begin(), state_args.size(), r);
+      const lps::state target_state(state_args.begin(), state_args.size(), [&](const data::data_expression& x) { return m_rewriter(x, sigma); });
       assert(probabilistic_solution->expression() == m_rewriter(dist.distribution(), sigma));
-      if (atermpp::down_cast<probabilistic_data_expression>(probabilistic_solution->expression()) >
-          probabilistic_data_expression::zero())
+      if (atermpp::down_cast<probabilistic_data_expression>(probabilistic_solution->expression()) > probabilistic_data_expression::zero())
       {
-        resulting_state_probability_list.push_front(
-                state_probability_pair(target_state, probabilistic_solution->expression()));
+        resulting_state_probability_list.push_front(state_probability_pair(target_state, probabilistic_solution->expression()));
       }
       // Reset substitution
       for (const variable& v: dist.variables())
@@ -500,7 +476,6 @@ void next_state_generator::iterator::increment()
 
     if (m_generator->m_use_enumeration_caching)
     {
-      state_applier apply_m_state(m_state, m_generator->m_process_parameters.size());
       m_enumeration_cache_key = enumeration_cache_key(m_summand->condition_arguments_function,
                                                       m_summand->condition_parameters.begin(),
                                                       m_summand->condition_parameters.end(),
@@ -592,8 +567,7 @@ void next_state_generator::iterator::increment()
   {
     // There is no distribution, and therefore only one target state is generated
     const data_expression_vector& state_args = m_summand->result_state;
-    rewriter_class r(m_generator->m_rewriter, *m_substitution);
-    m_transition.target_state = lps::state(state_args.begin(), state_args.size(), r);
+    m_transition.target_state = lps::state(state_args.begin(), state_args.size(), [&](const data::data_expression& x) { return m_generator->m_rewriter(x, *m_substitution); });
     m_transition.m_other_target_states = transition::state_probability_list();
   }
   else
@@ -607,8 +581,7 @@ void next_state_generator::iterator::increment()
     {
       // There are no state probability pairs. But this is wrong. The total probabilities should add up to one.
       // This means there should at least be one probability.
-      rewriter_class r(m_generator->m_rewriter, *m_substitution);
-      throw mcrl2::runtime_error("The distribution " + pp(r(dist.distribution())) + " has an empty set of instances.");
+      throw mcrl2::runtime_error("The distribution " + pp(m_generator->m_rewriter(dist.distribution(), *m_substitution)) + " has an empty set of instances.");
     }
     // Set one state as the resulting state, and leave the other states in the resulting_state_probability_list.
     m_transition.target_state = resulting_state_probability_list.front().state();

@@ -71,6 +71,217 @@ class next_state_generator
   public:
     class iterator;
 
+    class no_pruning_summand_subset
+    {
+        friend class next_state_generator;
+        friend class next_state_generator::iterator;
+
+      private:
+        std::vector<std::size_t> m_summands;
+
+      public:
+        /// \brief Trivial constructor. Constructs an invalid command subset.
+        no_pruning_summand_subset() = default;
+
+        /// \brief Constructs the full summand subset for the given generator.
+        no_pruning_summand_subset(next_state_generator *generator)
+        {
+          for (std::size_t i = 0; i < generator->m_summands.size(); i++)
+          {
+            m_summands.push_back(i);
+          }
+        }
+
+        /// \brief Constructs the summand subset containing the given commands.
+        no_pruning_summand_subset(next_state_generator* generator, const stochastic_action_summand_vector& summands)
+        {
+          std::set<stochastic_action_summand> summand_set(summands.begin(), summands.end());
+          for (std::size_t i = 0; i < generator->m_summands.size(); i++)
+          {
+            if (summand_set.find(*generator->m_summands[i].summand) != summand_set.end())
+            {
+              m_summands.push_back(i);
+            }
+          }
+        }
+    };
+
+    class pruning_summand_subset
+    {
+        friend class next_state_generator;
+        friend class next_state_generator::iterator;
+
+      private:
+        next_state_generator *m_generator;
+        std::vector<std::size_t> m_summands;
+
+        pruning_tree_node m_pruning_tree;
+        std::vector<std::size_t> m_pruning_parameters;
+        rewriter_substitution m_pruning_substitution;
+
+      public:
+        /// \brief Trivial constructor. Constructs an invalid command subset.
+        pruning_summand_subset() = default;
+
+        /// \brief Constructs the full summand subset for the given generator.
+        pruning_summand_subset(next_state_generator* generator, bool use_summand_pruning)
+                : m_generator(generator)
+        {
+          m_pruning_tree.summand_subset = atermpp::detail::shared_subset<next_state_summand>(generator->m_summands);
+          build_pruning_parameters(generator->m_specification.process().action_summands());
+        }
+
+        /// \brief Constructs the summand subset containing the given commands.
+        pruning_summand_subset(next_state_generator* generator, const stochastic_action_summand_vector& summands)
+                : m_generator(generator)
+        {
+          std::set<stochastic_action_summand> summand_set(summands.begin(), summands.end());
+
+          atermpp::detail::shared_subset<next_state_summand> full_set(generator->m_summands);
+          m_pruning_tree.summand_subset = atermpp::detail::shared_subset<next_state_summand>(full_set, std::bind(
+                  next_state_generator::summand_subset::summand_set_contains, summand_set, std::placeholders::_1));
+          build_pruning_parameters(summands);
+        }
+
+      private:
+        struct parameter_score
+        {
+          std::size_t parameter_id;
+          float score;
+          parameter_score() = default;
+          parameter_score(std::size_t id, float score_)
+                  : parameter_id(id), score(score_)
+          { }
+
+          bool operator<(const parameter_score& other) const
+          {
+            return score > other.score;
+          }
+        };
+
+        float condition_selectivity(const data::data_expression& e, const data::variable& v)
+        {
+          if (data::sort_bool::is_and_application(e))
+          {
+            return condition_selectivity(data::binary_left(atermpp::down_cast<data::application>(e)), v)
+                   + condition_selectivity(data::binary_right(atermpp::down_cast<data::application>(e)), v);
+          }
+          else if (data::sort_bool::is_or_application(e))
+          {
+            float sum = 0;
+            std::size_t count = 0;
+            std::list<data::data_expression> terms;
+            terms.push_back(e);
+            while (!terms.empty())
+            {
+              data::data_expression expression = terms.front();
+              terms.pop_front();
+              if (data::sort_bool::is_or_application(expression))
+              {
+                terms.push_back(data::binary_left(atermpp::down_cast<data::application>(e)));
+                terms.push_back(data::binary_right(atermpp::down_cast<data::application>(e)));
+              }
+              else
+              {
+                sum += condition_selectivity(expression, v);
+                count++;
+              }
+            }
+            return sum / count;
+          }
+          else if (is_equal_to_application(e))
+          {
+            const data::data_expression& left = data::binary_left(atermpp::down_cast<data::application>(e));
+            const data::data_expression& right = data::binary_right(atermpp::down_cast<data::application>(e));
+
+            if (data::is_variable(left) && data::variable(left) == v)
+            {
+              return 1;
+            }
+            else if (data::is_variable(right) && data::variable(right) == v)
+            {
+              return 1;
+            }
+            else
+            {
+              return 0;
+            }
+          }
+          else
+          {
+            return 0;
+          }
+        }
+
+        bool summand_set_contains(const std::set<stochastic_action_summand>& summand_set, const next_state_summand& summand)
+        {
+          return summand_set.count(*summand.summand) > 0;
+        }
+
+        void build_pruning_parameters(const stochastic_action_summand_vector& summands)
+        {
+          std::vector<parameter_score> parameters;
+
+          for (std::size_t i = 0; i < m_generator->m_process_parameters.size(); i++)
+          {
+            parameters.emplace_back(i, 0);
+            for (const auto& summand : summands)
+            {
+              parameters[i].score += condition_selectivity(summand.condition(), m_generator->m_process_parameters[i]);
+            }
+          }
+
+          std::sort(parameters.begin(), parameters.end());
+
+          for (std::size_t i = 0; i < m_generator->m_process_parameters.size(); i++)
+          {
+            if (parameters[i].score > 0)
+            {
+              m_pruning_parameters.push_back(parameters[i].parameter_id);
+              mCRL2log(log::verbose) << "using pruning parameter "
+                                     << m_generator->m_process_parameters[parameters[i].parameter_id].name() << std::endl;
+            }
+          }
+        }
+
+        bool is_not_false(const next_state_summand& summand)
+        {
+          return m_generator->m_rewriter(summand.condition, m_pruning_substitution) != data::sort_bool::false_();
+        }
+
+        atermpp::detail::shared_subset<next_state_summand>::iterator begin(const lps::state& state)
+        {
+          for (std::size_t m_pruning_parameter: m_pruning_parameters)
+          {
+            const data::variable& v = m_generator->m_process_parameters[m_pruning_parameter];
+            m_pruning_substitution[v] = v;
+          }
+
+          pruning_tree_node* node = &m_pruning_tree;
+          for (std::size_t parameter: m_pruning_parameters)
+          {
+            const data::data_expression& argument = state.element_at(parameter, m_generator->m_process_parameters.size());
+            m_pruning_substitution[m_generator->m_process_parameters[parameter]] = argument;
+            auto position = node->children.find(argument);
+            if (position == node->children.end())
+            {
+              pruning_tree_node child;
+              child.summand_subset = atermpp::detail::shared_subset<next_state_summand>(node->summand_subset,
+                      [&](const next_state_summand& summand) { return m_generator->m_rewriter(summand.condition, m_pruning_substitution) != data::sort_bool::false_(); }
+                      );
+              node->children[argument] = child;
+              node = &node->children[argument];
+            }
+            else
+            {
+              node = &position->second;
+            }
+          }
+
+          return node->summand_subset.begin();
+        }
+    };
+
     class summand_subset
     {
       friend class next_state_generator;
