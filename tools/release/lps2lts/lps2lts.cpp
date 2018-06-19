@@ -149,8 +149,6 @@ class lps2lts_tool : public lps2lts_base
       desc.
       add_option("cached",
                  "use enumeration caching techniques to speed up state space generation. ").
-      add_option("prune",
-                 "use summand pruning to speed up state space generation. ").
       add_option("dummy", make_mandatory_argument("BOOL"),
                  "replace free variables in the LPS with dummy values based on the value of BOOL: 'yes' (default) or 'no'. ", 'y').
       add_option("unused-data",
@@ -232,7 +230,6 @@ class lps2lts_tool : public lps2lts_base
       m_options.strat           = parser.option_argument_as< mcrl2::data::rewriter::strategy >("rewriter");
 
       m_options.use_enumeration_caching = parser.options.count("cached") > 0;
-      m_options.use_summand_pruning = parser.options.count("prune") > 0;
 
       if (parser.options.count("dummy"))
       {

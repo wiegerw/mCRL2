@@ -169,31 +169,6 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
 
   stochastic_action_summand_vector prioritised_summands;
   stochastic_action_summand_vector nonprioritised_summands;
-  if (m_options.priority_action != "")
-  {
-    mCRL2log(verbose) << "applying confluence reduction with tau action '" << m_options.priority_action << "'..."
-                      << std::endl;
-
-    for (auto& summand : specification.process().action_summands())
-    {
-      if ((m_options.priority_action == "tau" && summand.is_tau()) ||
-          (summand.multi_action().actions().size() == 1 &&
-           m_options.priority_action == (std::string) summand.multi_action().actions().front().label().name()))
-      {
-        prioritised_summands.push_back(summand);
-      }
-      else
-      {
-        nonprioritised_summands.push_back(summand);
-      }
-    }
-
-    m_use_confluence_reduction = true;
-  }
-  else
-  {
-    m_use_confluence_reduction = false;
-  }
 
   stochastic_action_summand_vector tau_summands;
   if (m_options.detect_divergence)
@@ -242,14 +217,13 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
       summand.multi_action().actions() = process::action_list();
     }
   }
-  m_generator = new next_state_generator(specification, rewriter, m_options.use_enumeration_caching,
-                                         m_options.use_summand_pruning);
+  m_generator = new next_state_generator(specification, rewriter, m_options.use_enumeration_caching, false);
 
   m_main_subset = &m_generator->full_subset();
 
   if (m_options.detect_divergence)
   {
-    m_tau_summands = next_state_generator::summand_subset(m_generator, tau_summands, m_options.use_summand_pruning);
+    m_tau_summands = next_state_generator::summand_subset(m_generator, tau_summands, false);
   }
 
   if (m_options.detect_deadlock)

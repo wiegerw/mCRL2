@@ -66,7 +66,6 @@ class lps2lts_algorithm
     next_state_generator *m_generator;
     next_state_generator::summand_subset *m_main_subset;
 
-    bool m_use_confluence_reduction;
     next_state_generator::summand_subset m_nonprioritized_subset;
     next_state_generator::summand_subset m_prioritized_subset;
 

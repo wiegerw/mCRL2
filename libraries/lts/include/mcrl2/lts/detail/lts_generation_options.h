@@ -39,7 +39,6 @@ class lts_generation_options
 
     mcrl2::data::rewriter::strategy strat = mcrl2::data::jitty;
     exploration_strategy expl_strat = es_breadth;
-    std::string priority_action;
     std::size_t todo_max = (std::numeric_limits< std::size_t >::max)();
     std::size_t max_states = default_max_states;
     std::size_t initial_table_size = default_init_tsize;
@@ -65,7 +64,6 @@ class lts_generation_options
     std::set < mcrl2::lps::multi_action > trace_multiactions;
 
     bool use_enumeration_caching = false;
-    bool use_summand_pruning = false;
     std::set< mcrl2::core::identifier_string > actions_internal_for_divergencies;
 
     /// \brief Constructor
