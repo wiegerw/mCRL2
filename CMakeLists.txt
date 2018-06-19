@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.11)
-project(mCRL4)
+project(mCRL2)
 
 if("${CMAKE_MAJOR_VERSION}" GREATER 2)
   cmake_policy(SET CMP0043 NEW)
