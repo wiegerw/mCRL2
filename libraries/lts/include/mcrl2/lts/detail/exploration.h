@@ -66,9 +66,6 @@ class lps2lts_algorithm
     next_state_generator *m_generator;
     next_state_generator::summand_subset *m_main_subset;
 
-    next_state_generator::summand_subset m_nonprioritized_subset;
-    next_state_generator::summand_subset m_prioritized_subset;
-
     atermpp::indexed_set<lps::state> m_state_numbers;
     bit_hash_table m_bit_hash_table;
 
@@ -77,9 +74,6 @@ class lps2lts_algorithm
     std::ofstream m_aut_file;
 
     bool m_maintain_traces;
-    bool m_value_prioritize;
-
-    next_state_generator::summand_subset m_tau_summands;
 
     std::vector<bool> m_detected_action_summands;
 
@@ -122,11 +116,6 @@ class lps2lts_algorithm
     }
 
   private:
-    data::data_expression_vector generator_state(const lps::state& storage_state);
-    lps::state storage_state(const data::data_expression_vector& generator_state);
-    void set_prioritised_representatives(next_state_generator::transition::state_probability_list& states);
-    lps::state get_prioritised_representative(const lps::state& state1);
-    void value_prioritize(std::vector<next_state_generator::transition>& transitions);
     bool save_trace(const lps::state& state1, const std::string& filename);
     bool save_trace(const lps::state& state1, const next_state_generator::transition& transition, const std::string& filename);
     void construct_trace(const lps::state& state1, mcrl2::trace::Trace& trace);
@@ -145,9 +134,6 @@ class lps2lts_algorithm
     );
     void generate_lts_breadth_todo_max_is_npos();
     void generate_lts_breadth_todo_max_is_not_npos(const next_state_generator::transition::state_probability_list& initial_states);
-    void generate_lts_breadth_bithashing(const next_state_generator::transition::state_probability_list& initial_states);
-    void generate_lts_depth(const next_state_generator::transition::state_probability_list& initial_states);
-    void generate_lts_random(const next_state_generator::transition::state_probability_list& initial_states);
     void print_target_distribution_in_aut_format(
                const lps::next_state_generator::transition::state_probability_list& state_probability_list,
                const std::size_t last_state_number,
