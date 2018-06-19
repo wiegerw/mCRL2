@@ -164,24 +164,6 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
   stochastic_action_summand_vector nonprioritised_summands;
 
   stochastic_action_summand_vector tau_summands;
-  if (m_options.detect_divergence)
-  {
-    mCRL2log(verbose) << "Detect divergences where actions with the following labels are hidden: tau";
-    for (const core::identifier_string& a: m_options.actions_internal_for_divergencies)
-    {
-      mCRL2log(verbose) << ", " << a;
-    }
-    mCRL2log(verbose) << ".\n";
-
-    for (const stochastic_action_summand& s: specification.process().action_summands())
-    {
-      if (is_hidden_summand(s.multi_action().actions(), m_options.actions_internal_for_divergencies))
-      {
-        tau_summands.push_back(s);
-      }
-    }
-  }
-
   if (m_options.detect_action)
   {
     m_detected_action_summands.reserve(specification.process().action_summands().size());
@@ -202,7 +184,7 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
 
   bool compute_actions =
           m_options.outformat != lts_none || m_options.detect_action || !m_options.trace_multiactions.empty() ||
-          m_maintain_traces || m_value_prioritize || !m_options.actions_internal_for_divergencies.empty();
+          m_maintain_traces || m_value_prioritize;
   if (!compute_actions)
   {
     for (auto& summand: specification.process().action_summands())
@@ -213,11 +195,6 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
   m_generator = new next_state_generator(specification, rewriter, m_options.use_enumeration_caching, false);
 
   m_main_subset = &m_generator->full_subset();
-
-  if (m_options.detect_divergence)
-  {
-    m_tau_summands = next_state_generator::summand_subset(m_generator, tau_summands, false);
-  }
 
   if (m_options.detect_deadlock)
   {
@@ -563,98 +540,6 @@ bool lps2lts_algorithm::save_trace(const lps::state& state1,
   }
 }
 
-template<class COUNTER_EXAMPLE_GENERATOR>
-bool lps2lts_algorithm::search_divergence(
-        const mcrl2::lts::detail::state_index_pair<COUNTER_EXAMPLE_GENERATOR>& state_pair,
-        std::set<lps::state>& current_path,
-        std::set<lps::state>& visited,
-        COUNTER_EXAMPLE_GENERATOR& divergence_loop)
-{
-  current_path.insert(state_pair.state());
-  std::vector<detail::state_index_pair<COUNTER_EXAMPLE_GENERATOR> > new_states;
-  next_state_generator::enumerator_queue enumeration_queue;
-  for (next_state_generator::iterator j = m_generator->begin(state_pair.state(), m_tau_summands, &enumeration_queue);
-       j != m_generator->end(); j++)
-  {
-    assert(is_hidden_summand(j->action.actions(), m_options.actions_internal_for_divergencies));
-
-    std::pair<std::size_t, bool> action_label_number = m_action_label_numbers.put(j->action.actions());
-    if (action_label_number.second)
-    {
-      assert(!j->action.actions().empty());
-      std::size_t action_number = m_output_lts.add_action(action_label_lts(j->action));
-      assert(action_number == action_label_number.first);
-      static_cast <void>(action_number); // Avoid a warning when compiling in non debug mode.
-    }
-
-    if (non_divergent_states.count(j->target_state) ==
-        0) // This state is not shown to be non convergent. So, an investigation is in order.
-    {
-      typename COUNTER_EXAMPLE_GENERATOR::index_type i = divergence_loop.add_transition(action_label_number.first,
-                                                                                        state_pair.index());
-      if (visited.insert(j->target_state).second)
-      {
-        new_states.push_back(detail::state_index_pair<COUNTER_EXAMPLE_GENERATOR>(j->target_state, i));
-      }
-      else if (current_path.count(j->target_state) != 0)
-      {
-        mCRL2log(info) << "divergence-detect: divergence found." << std::endl;
-        divergence_loop.save_counter_example(i, m_output_lts);
-        return true;
-      }
-    }
-  }
-
-  for (const detail::state_index_pair<COUNTER_EXAMPLE_GENERATOR>& p: new_states)
-  {
-    if (search_divergence(p, current_path, visited, divergence_loop))
-    {
-      return true;
-    }
-  }
-
-  assert(current_path.count(state_pair.state()) == 1);
-  current_path.erase(state_pair.state());
-  return false;
-}
-
-template<class COUNTER_EXAMPLE_GENERATOR>
-void lps2lts_algorithm::check_divergence(
-        const mcrl2::lts::detail::state_index_pair<COUNTER_EXAMPLE_GENERATOR>& state_pair,
-        COUNTER_EXAMPLE_GENERATOR divergence_loop)
-{
-  std::set<lps::state> visited;
-  std::set<lps::state> current_path;
-  visited.insert(state_pair.state());
-
-  if (search_divergence(state_pair, current_path, visited, divergence_loop))
-  {
-    if (m_options.trace && m_traces_saved < m_options.max_traces)
-    {
-      std::string filename = m_options.trace_prefix + "_divergence_" + std::to_string(m_traces_saved) + ".trc";
-      if (save_trace(state_pair.state(), filename))
-      {
-        mCRL2log(info) << "Trace to the divergencing state is saved to '" << filename << std::endl;
-      }
-      else
-      {
-        mCRL2log(info) << "Failed to save trace to diverging state to the file " << filename << "." << std::endl;
-      }
-    }
-    auto state_number = m_state_numbers.index(state_pair.state());
-    mCRL2log(info) << "State index of diverging state is " << state_number << "." << std::endl;
-  }
-  else
-  {
-    // No divergence has been found. Register all states as being non divergent. 
-    for (const lps::state& s: visited)
-    {
-      assert(non_divergent_states.count(s) == 0);
-      non_divergent_states.insert(s);
-    }
-  }
-}
-
 void lps2lts_algorithm::save_actions(const lps::state& state, const next_state_generator::transition& transition)
 {
   auto state_number = m_state_numbers.index(state);
@@ -778,8 +663,7 @@ void lps2lts_algorithm::print_target_distribution_in_aut_format(
     if (m_options.outformat == lts_aut)
     {
       const lps::state& probability_destination = state_probability.state();
-      const std::pair<std::size_t, bool> probability_destination_state_number = add_target_state(source_state,
-                                                                                                 probability_destination);
+      const std::pair<std::size_t, bool> probability_destination_state_number = add_target_state(source_state, probability_destination);
       if (is_application(state_probability.probability()) &&
           atermpp::down_cast<data::application>(state_probability.probability()).head().size() != 3)
       {
@@ -920,30 +804,6 @@ void lps2lts_algorithm::get_transitions(const lps::state& state,
 )
 {
   assert(transitions.empty());
-  if (m_options.detect_divergence)
-  {
-    if (non_divergent_states.count(state) == 0)  // This state was not already investigated earlier.
-    {
-      if (m_options.trace)
-      {
-        // Onderstaande string generatie kan duur uitpakken. 
-        std::string filename_divergence_loop =
-                m_options.trace_prefix + "_divergence_loop" + std::to_string(m_traces_saved) + ".trc";
-        check_divergence<detail::counter_example_constructor>(
-                detail::state_index_pair<detail::counter_example_constructor>(state,
-                                                                              detail::counter_example_constructor::root_index()),
-                detail::counter_example_constructor(filename_divergence_loop));
-      }
-      else
-      {
-        check_divergence(
-                detail::state_index_pair<detail::dummy_counter_example_constructor>(state,
-                                                                                    detail::dummy_counter_example_constructor::root_index()),
-                detail::dummy_counter_example_constructor());
-      }
-    }
-  }
-
   try
   {
     enumeration_queue.clear();

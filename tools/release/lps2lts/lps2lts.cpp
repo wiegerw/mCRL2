@@ -163,11 +163,6 @@ class lps2lts_tool : public lps2lts_base
                  "detect nondeterministic states, i.e. states with outgoing transitions with the same label to different states. ", 'n').
       add_option("deadlock",
                  "detect deadlocks (i.e. for every deadlock a message is printed). ", 'D').
-      add_option("divergence",
-                 "detect divergences (i.e. for every state with a divergence (=tau loop) a message is printed). "
-                 "The algorithm to detect the divergences is linear for every state, "
-                 "so state space exploration becomes quadratic with this option on, causing a state "
-                 "space exploration to become slow when this option is enabled. ", 'F').
       add_option("action", make_mandatory_argument("NAMES"),
                  "report whether an action from NAMES occurs in the transitions system, "
                  "where NAMES is a comma-separated list. A message "
@@ -216,7 +211,6 @@ class lps2lts_tool : public lps2lts_base
       m_options.removeunused    = parser.options.count("unused-data") == 0;
       m_options.detect_deadlock = parser.options.count("deadlock") != 0;
       m_options.detect_nondeterminism = parser.options.count("nondeterminism") != 0;
-      m_options.detect_divergence = parser.options.count("divergence") != 0;
       m_options.outinfo         = parser.options.count("no-info") == 0;
       m_options.suppress_progress_messages = parser.options.count("suppress") !=0;
       m_options.strat           = parser.option_argument_as< mcrl2::data::rewriter::strategy >("rewriter");
@@ -264,15 +258,7 @@ class lps2lts_tool : public lps2lts_base
       }
       if (parser.options.count("tau")>0)
       {
-        if (parser.options.count("divergence")==0)
-        {
-          parser.error("Option --tau requires the option --divergence.");
-        }
         std::list<std::string> actions = split_actions(parser.option_argument("tau"));
-        for (const std::string& s: actions)
-        {
-          m_options.actions_internal_for_divergencies.insert(mcrl2::core::identifier_string(s));
-        }
       }
       if (parser.options.count("trace"))
       {

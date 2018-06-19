@@ -91,9 +91,6 @@ class lps2lts_algorithm
     next_state_generator::transition::state_probability_list m_initial_states;
     std::size_t m_level;
 
-    std::unordered_set<lps::state> non_divergent_states;  // This set is filled with states proven not to be divergent, 
-                                                          // when lps2lts_algorithm is requested to search for divergencies.
-
     volatile bool m_must_abort;
 
   public:
@@ -136,13 +133,6 @@ class lps2lts_algorithm
 
     bool is_nondeterministic(std::vector<lps2lts_algorithm::next_state_generator::transition>& transitions,
                              next_state_generator::transition& nondeterminist_transition);
-    template <class COUNTER_EXAMPLE_GENERATOR>
-    bool search_divergence(const detail::state_index_pair<COUNTER_EXAMPLE_GENERATOR>& state, 
-                           std::set<lps::state>& current_path, std::set<lps::state>& visited, 
-                           COUNTER_EXAMPLE_GENERATOR& divergence_loop);
-    template <class COUNTER_EXAMPLE_GENERATOR>
-    void check_divergence(const detail::state_index_pair<COUNTER_EXAMPLE_GENERATOR>& state, 
-                          COUNTER_EXAMPLE_GENERATOR divergence_loop);
     void save_actions(const lps::state& state, const next_state_generator::transition& transition);
     void save_deadlock(const lps::state& state);
     void save_nondeterministic_state(const lps::state& state, const next_state_generator::transition& nondeterminist_transition);

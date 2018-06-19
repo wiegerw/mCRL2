@@ -52,14 +52,12 @@ class lts_generation_options
     bool save_error_trace = false;
     bool detect_deadlock = false;
     bool detect_nondeterminism = false;
-    bool detect_divergence = false;
     bool detect_action = false;
     std::set < mcrl2::core::identifier_string > trace_actions;
     std::set < std::string > trace_multiaction_strings;
     std::set < mcrl2::lps::multi_action > trace_multiactions;
 
     bool use_enumeration_caching = false;
-    std::set< mcrl2::core::identifier_string > actions_internal_for_divergencies;
 
     /// \brief Constructor
     lts_generation_options() = default;
@@ -102,19 +100,6 @@ class lts_generation_options
           {
             mCRL2log(log::verbose) << "Checking for action " << ta << "\n";
           }
-        }
-      }
-      for (const mcrl2::core::identifier_string& ta: actions_internal_for_divergencies)
-      {
-        mcrl2::process::action_label_list::iterator it = specification.action_labels().begin();
-        bool found = (std::string(ta) == "tau");
-        while (!found && it != specification.action_labels().end())
-        {
-          found = (it++->name() == ta);
-        }
-        if (!found)
-        {
-          throw mcrl2::runtime_error(std::string("Action label ") + core::pp(ta) + " is not declared.");
         }
       }
     }
