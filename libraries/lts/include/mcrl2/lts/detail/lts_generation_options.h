@@ -34,64 +34,42 @@ class lts_generation_options
     static const std::size_t default_max_traces=ULONG_MAX;
 
     mcrl2::lps::stochastic_specification specification;
-    bool usedummies;
-    bool removeunused;
+    bool usedummies = true;
+    bool removeunused = true;
 
-    mcrl2::data::rewriter::strategy strat;
-    exploration_strategy expl_strat;
+    mcrl2::data::rewriter::strategy strat = mcrl2::data::jitty;
+    exploration_strategy expl_strat = es_breadth;
     std::string priority_action;
-    std::size_t todo_max;
-    std::size_t max_states;
-    std::size_t initial_table_size;
-    bool suppress_progress_messages;
+    std::size_t todo_max = (std::numeric_limits< std::size_t >::max)();
+    std::size_t max_states = default_max_states;
+    std::size_t initial_table_size = default_init_tsize;
+    bool suppress_progress_messages = false;
 
-    bool bithashing;
-    std::size_t bithashsize;
+    bool bithashing = false;
+    std::size_t bithashsize = default_bithashsize;
 
-    mcrl2::lts::lts_type outformat;
-    bool outinfo;
+    mcrl2::lts::lts_type outformat = mcrl2::lts::lts_none;
+    bool outinfo = true;
     std::string lts;
 
-    bool trace;
-    std::size_t max_traces;
+    bool trace = false;
+    std::size_t max_traces = default_max_traces;
     std::string trace_prefix;
-    bool save_error_trace;
-    bool detect_deadlock;
-    bool detect_nondeterminism;
-    bool detect_divergence;
-    bool detect_action;
+    bool save_error_trace = false;
+    bool detect_deadlock = false;
+    bool detect_nondeterminism = false;
+    bool detect_divergence = false;
+    bool detect_action = false;
     std::set < mcrl2::core::identifier_string > trace_actions;
     std::set < std::string > trace_multiaction_strings;
     std::set < mcrl2::lps::multi_action > trace_multiactions;
 
-    bool use_enumeration_caching;
-    bool use_summand_pruning;
+    bool use_enumeration_caching = false;
+    bool use_summand_pruning = false;
     std::set< mcrl2::core::identifier_string > actions_internal_for_divergencies;
 
     /// \brief Constructor
-    lts_generation_options() :
-      usedummies(true),
-      removeunused(true),
-      strat(mcrl2::data::jitty),
-      expl_strat(es_breadth),
-      todo_max((std::numeric_limits< std::size_t >::max)()),
-      max_states(default_max_states),
-      initial_table_size(default_init_tsize),
-      suppress_progress_messages(false),
-      bithashing(false),
-      bithashsize(default_bithashsize),
-      outformat(mcrl2::lts::lts_none),
-      outinfo(true),
-      trace(false),
-      max_traces(default_max_traces),
-      save_error_trace(false),
-      detect_deadlock(false),
-      detect_nondeterminism(false),
-      detect_divergence(false),
-      detect_action(false),
-      use_enumeration_caching(false),
-      use_summand_pruning(false)
-    {}
+    lts_generation_options() = default;
 
     /// \brief Copy assignment operator.
     lts_generation_options& operator=(const lts_generation_options& )=default;
