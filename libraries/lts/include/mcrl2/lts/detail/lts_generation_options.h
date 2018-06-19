@@ -31,8 +31,8 @@ class lts_generation_options
     static const std::size_t default_max_traces = ULONG_MAX;
 
     mcrl2::lps::stochastic_specification specification;
-    bool usedummies = true;
-    bool removeunused = true;
+    bool instantiate_global_variables = true;
+    bool remove_unused_rewrite_rules = true;
 
     mcrl2::data::rewriter::strategy strat = mcrl2::data::jitty;
     std::size_t todo_max = (std::numeric_limits<std::size_t>::max)();
@@ -42,19 +42,10 @@ class lts_generation_options
 
     mcrl2::lts::lts_type outformat = mcrl2::lts::lts_none;
     bool outinfo = true;
-    std::string lts;
+    std::string filename;
 
-    bool trace = false;
-    std::size_t max_traces = default_max_traces;
-    std::string trace_prefix;
-    bool save_error_trace = false;
     bool detect_deadlock = false;
     bool detect_nondeterminism = false;
-    bool detect_action = false;
-    std::set<mcrl2::core::identifier_string> trace_actions;
-    std::set<std::string> trace_multiaction_strings;
-    std::set<mcrl2::lps::multi_action> trace_multiactions;
-
     bool use_enumeration_caching = false;
 
     /// \brief Constructor
@@ -62,46 +53,6 @@ class lts_generation_options
 
     /// \brief Copy assignment operator.
     lts_generation_options& operator=(const lts_generation_options&) = default;
-
-    void validate_actions()
-    {
-      for (const std::string& s: trace_multiaction_strings)
-      {
-        try
-        {
-          trace_multiactions.insert(mcrl2::lps::parse_multi_action(s, specification.action_labels(), specification.data()));
-        }
-        catch (mcrl2::runtime_error& e)
-        {
-          throw mcrl2::runtime_error(std::string("Multi-action ") + s + " does not exist: " + e.what());
-        }
-        mCRL2log(log::verbose) << "Checking for action \"" << s << "\"\n";
-      }
-      if (detect_action)
-      {
-        for (const mcrl2::core::identifier_string& ta: trace_actions)
-        {
-          bool found = (std::string(ta) == "tau");
-          for (const process::action_label& al: specification.action_labels())
-          {
-            if (al.name() == ta)
-            {
-              found = true;
-              break;
-            }
-          }
-          if (!found)
-          {
-            throw mcrl2::runtime_error(std::string("Action label ") + core::pp(ta) + " is not declared.");
-          }
-          else
-          {
-            mCRL2log(log::verbose) << "Checking for action " << ta << "\n";
-          }
-        }
-      }
-    }
-
 };
 
 } // namespace lts

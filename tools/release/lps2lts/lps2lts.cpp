@@ -40,31 +40,6 @@ using namespace mcrl2::log;
 
 using mcrl2::data::tools::rewriter_tool;
 
-static
-std::list<std::string> split_actions(const std::string& s)
-{
-  std::size_t pcount = 0;
-  std::string a;
-  std::list<std::string> result;
-  for (std::string::const_iterator i = s.begin(); i != s.end(); ++i)
-  {
-    if (*i == ',' && pcount == 0)
-    {
-      result.push_back(a);
-      a.clear();
-    }
-    else
-    {
-      if (*i == '(') ++pcount;
-      else if (*i == ')') --pcount;
-      a.push_back(*i);
-    }
-  }
-  if (!a.empty())
-    result.push_back(a);
-  return result;
-}
-
 typedef  rewriter_tool< input_output_tool > lps2lts_base;
 class lps2lts_tool : public lps2lts_base
 {
@@ -113,12 +88,9 @@ class lps2lts_tool : public lps2lts_base
       m_lps2lts.abort();
     }
 
-    bool run()
+    bool run() override
     {
       load_lps(m_options.specification, m_filename);
-      m_options.trace_prefix = m_filename.substr(0, m_options.trace_prefix.find_last_of('.'));
-
-      m_options.validate_actions(); // Throws an exception if actions are not properly declared.
 
       if (!m_lps2lts.initialise_lts_generation(&m_options))
       {
@@ -142,7 +114,7 @@ class lps2lts_tool : public lps2lts_base
     }
 
   protected:
-    void add_options(interface_description& desc)
+    void add_options(interface_description& desc) override
     {
       lps2lts_base::add_options(desc);
 
@@ -177,16 +149,13 @@ class lps2lts_tool : public lps2lts_base
                  "horrendous. This feature helps to suppress those. Other verbose messages, "
                  "such as the total number of states explored, just remain visible. ").
       add_option("init-tsize", make_mandatory_argument("NUM"),
-                 "set the initial size of the internally used hash tables (default is 10000). ").
-      add_option("tau",make_mandatory_argument("ACTNAMES"),
-                 "consider actions with a name in the comma separated list ACTNAMES to be internal. "
-                 "This list is only used and allowed when searching for divergencies. ");
+                 "set the initial size of the internally used hash tables (default is 10000). ");
     }
 
-    void parse_options(const command_line_parser& parser)
+    void parse_options(const command_line_parser& parser) override
     {
       lps2lts_base::parse_options(parser);
-      m_options.removeunused    = parser.options.count("unused-data") == 0;
+      m_options.remove_unused_rewrite_rules    = parser.options.count("unused-data") == 0;
       m_options.detect_deadlock = parser.options.count("deadlock") != 0;
       m_options.detect_nondeterminism = parser.options.count("nondeterminism") != 0;
       m_options.outinfo         = parser.options.count("no-info") == 0;
@@ -204,11 +173,11 @@ class lps2lts_tool : public lps2lts_base
         std::string dummy_str(parser.option_argument("dummy"));
         if (dummy_str == "yes")
         {
-          m_options.usedummies = true;
+          m_options.instantiate_global_variables = true;
         }
         else if (dummy_str == "no")
         {
-          m_options.usedummies = false;
+          m_options.instantiate_global_variables = false;
         }
         else
         {
@@ -218,16 +187,7 @@ class lps2lts_tool : public lps2lts_base
 
       if (parser.options.count("max"))
       {
-        m_options.max_states = parser.option_argument_as< unsigned long > ("max");
-      }
-      if (parser.options.count("tau")>0)
-      {
-        std::list<std::string> actions = split_actions(parser.option_argument("tau"));
-      }
-      if (parser.options.count("trace"))
-      {
-        m_options.trace      = true;
-        m_options.max_traces = parser.option_argument_as< unsigned long > ("trace");
+        m_options.max_states = parser.option_argument_as<unsigned long> ("max");
       }
 
       if (parser.options.count("out"))
@@ -247,10 +207,6 @@ class lps2lts_tool : public lps2lts_base
       {
         m_options.todo_max = parser.option_argument_as< unsigned long >("todo-max");
       }
-      if (parser.options.count("error-trace"))
-      {
-        m_options.save_error_trace = true;
-      }
 
       if (parser.options.count("suppress") && !mCRL2logEnabled(verbose))
       {
@@ -267,12 +223,12 @@ class lps2lts_tool : public lps2lts_base
       }
       if (1 < parser.arguments.size())
       {
-        m_options.lts = parser.arguments[1];
+        m_options.filename = parser.arguments[1];
       }
 
-      if (!m_options.lts.empty() && m_options.outformat == lts_none)
+      if (!m_options.filename.empty() && m_options.outformat == lts_none)
       {
-        m_options.outformat = mcrl2::lts::detail::guess_format(m_options.lts);
+        m_options.outformat = mcrl2::lts::detail::guess_format(m_options.filename);
 
         if (m_options.outformat == lts_none)
         {
@@ -290,8 +246,8 @@ static
 void premature_termination_handler(int)
 {
   // Reset signal handlers.
-  signal(SIGABRT,NULL);
-  signal(SIGINT,NULL);
+  signal(SIGABRT, nullptr);
+  signal(SIGINT, nullptr);
   tool_instance->abort();
 }
 

@@ -34,8 +34,8 @@ class lps2lts_algorithm
 
   private:
     lts_generation_options m_options;
-    next_state_generator *m_generator;
-    next_state_generator::summand_subset *m_main_subset;
+    next_state_generator* m_generator = nullptr;
+    next_state_generator::summand_subset* m_main_subset = nullptr;
 
     atermpp::indexed_set<lps::state> m_state_numbers;
 
@@ -43,20 +43,15 @@ class lps2lts_algorithm
     atermpp::indexed_set<process::action_list> m_action_label_numbers; 
     std::ofstream m_aut_file;
 
-    std::map<lps::state, lps::state> m_backpointers;
-    std::size_t m_traces_saved;
-
-    std::size_t m_num_states;
-    std::size_t m_num_transitions;
+    std::size_t m_number_of_states = 0;
+    std::size_t m_number_of_transitions = 0;
     next_state_generator::transition::state_probability_list m_initial_states;
-    std::size_t m_level;
+    std::size_t m_level = 0;
 
-    volatile bool m_must_abort;
+    volatile bool m_must_abort = false;
 
   public:
-    lps2lts_algorithm() :
-      m_generator(nullptr),
-      m_must_abort(false)
+    lps2lts_algorithm()
     {
       m_action_label_numbers.put(action_label_lts::tau_action().actions());  // The action tau has index 0 by default.
     }
@@ -82,12 +77,11 @@ class lps2lts_algorithm
     }
 
   private:
-    bool is_nondeterministic(std::vector<lps2lts_algorithm::next_state_generator::transition>& transitions,
-                             next_state_generator::transition& nondeterminist_transition);
+    bool is_nondeterministic(std::vector<next_state_generator::transition>& transitions, next_state_generator::transition& nondeterminist_transition);
     std::pair<std::size_t, bool> add_target_state(const lps::state& source_state, const lps::state& target_state);
     bool add_transition(const lps::state& source_state, const next_state_generator::transition& transition);
     void generate_transitions(const lps::state& state,
-                              std::vector<lps2lts_algorithm::next_state_generator::transition>& transitions,
+                              std::vector<next_state_generator::transition>& transitions,
                               next_state_generator::enumerator_queue& enumeration_queue
     );
     void generate_lts_breadth_first();
@@ -104,8 +98,6 @@ class lps2lts_algorithm
                std::size_t base_state_number,
                const next_state_generator::transition::state_probability_list& other_probabilities,
                const lps::state& source_state);
-
-
 };
 
 } // namespace lps
