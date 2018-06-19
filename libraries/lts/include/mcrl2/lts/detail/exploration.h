@@ -75,8 +75,6 @@ class lps2lts_algorithm
 
     bool m_maintain_traces;
 
-    std::vector<bool> m_detected_action_summands;
-
     std::map<lps::state, lps::state> m_backpointers;
     std::size_t m_traces_saved;
 

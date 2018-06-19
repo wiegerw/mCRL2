@@ -163,26 +163,9 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
   stochastic_action_summand_vector nonprioritised_summands;
 
   stochastic_action_summand_vector tau_summands;
-  if (m_options.detect_action)
-  {
-    m_detected_action_summands.reserve(specification.process().action_summands().size());
-    for (auto& summand: specification.process().action_summands())
-    {
-      bool found = false;
-      for (const auto& a: summand.multi_action().actions())
-      {
-        if (m_options.trace_actions.count(a.label().name()) > 0)
-        {
-          found = true;
-          break;
-        }
-      }
-      m_detected_action_summands.push_back(found);
-    }
-  }
 
   bool compute_actions =
-          m_options.outformat != lts_none || m_options.detect_action || !m_options.trace_multiactions.empty() || m_maintain_traces;
+          m_options.outformat != lts_none || !m_options.trace_multiactions.empty() || m_maintain_traces;
   if (!compute_actions)
   {
     for (auto& summand: specification.process().action_summands())
@@ -554,11 +537,6 @@ lps2lts_algorithm::add_transition(const lps::state& source_state, const next_sta
 
   const lps::state& destination = transition.target_state;
   const std::pair<std::size_t, bool> destination_state_number = add_target_state(source_state, destination);
-
-  if (m_options.detect_action && m_detected_action_summands[transition.summand_index])
-  {
-    save_actions(source_state, transition);
-  }
 
   if (m_options.outformat == lts_aut || m_options.outformat == lts_none)
   {

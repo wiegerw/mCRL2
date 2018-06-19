@@ -163,16 +163,6 @@ class lps2lts_tool : public lps2lts_base
                  "detect nondeterministic states, i.e. states with outgoing transitions with the same label to different states. ", 'n').
       add_option("deadlock",
                  "detect deadlocks (i.e. for every deadlock a message is printed). ", 'D').
-      add_option("action", make_mandatory_argument("NAMES"),
-                 "report whether an action from NAMES occurs in the transitions system, "
-                 "where NAMES is a comma-separated list. A message "
-                 "is printed for every occurrence of one of these action names. "
-                 "With the -t flag traces towards these actions are generated. "
-                 "When using -tN only N traces are generated after which the generation of the state space stops. ", 'a').
-      add_option("multiaction", make_mandatory_argument("NAMES"),
-                 "detect and report multiactions in the transitions system "
-                 "from NAMES, a comma-separated list. Works like -a, except that multi-actions "
-                 "are matched exactly, including data parameters. ", 'm').
       add_option("trace", make_optional_argument("NUM", std::to_string(lts_generation_options::default_max_traces)),
                  "Write a shortest trace to each state that is reached with an action from NAMES "
                  "with the option --action, is a deadlock with the option --deadlock, is nondeterministic with the option --nondeterminism, or is a "
@@ -241,20 +231,6 @@ class lps2lts_tool : public lps2lts_base
       if (parser.options.count("max"))
       {
         m_options.max_states = parser.option_argument_as< unsigned long > ("max");
-      }
-      if (parser.options.count("action"))
-      {
-        m_options.detect_action = true;
-        std::list<std::string> actions = split_actions(parser.option_argument("action"));
-        for (const std::string& s: actions)
-        {
-          m_options.trace_actions.insert(mcrl2::core::identifier_string(s));
-        }
-      }
-      if (parser.options.count("multiaction"))
-      {
-        std::list<std::string> actions = split_actions(parser.option_argument("multiaction"));
-        m_options.trace_multiaction_strings.insert(actions.begin(), actions.end());
       }
       if (parser.options.count("tau")>0)
       {
