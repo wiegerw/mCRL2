@@ -190,14 +190,6 @@ class lps2lts_tool : public lps2lts_base
       add_option("error-trace",
                  "if an error occurs during exploration, save a trace to the state that could "
                  "not be explored. ").
-      add_option("strategy", make_enum_argument<exploration_strategy>("NAME")
-                 .add_value_short(es_breadth, "b", true)
-                 .add_value_short(es_depth, "d")
-                 .add_value_short(es_value_prioritized, "p")
-                 .add_value_short(es_value_random_prioritized, "q")
-                 .add_value_short(es_random, "r")
-                 , "explore the state space using strategy NAME:"
-                 , 's').
       add_option("out", make_mandatory_argument("FORMAT"),
                  "save the output in the specified FORMAT. ", 'o').
       add_option("no-info", "do not add state information to OUTFILE. "
@@ -287,8 +279,6 @@ class lps2lts_tool : public lps2lts_base
         m_options.trace      = true;
         m_options.max_traces = parser.option_argument_as< unsigned long > ("trace");
       }
-
-      m_options.expl_strat = parser.option_argument_as<exploration_strategy>("strategy");
 
       if (parser.options.count("out"))
       {

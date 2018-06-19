@@ -105,8 +105,7 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
   m_traces_saved = 0;
 
   m_maintain_traces = m_options.trace || m_options.save_error_trace;
-  m_value_prioritize = (m_options.expl_strat == es_value_prioritized ||
-                        m_options.expl_strat == es_value_random_prioritized);
+  m_value_prioritize = false;
 
   lps::stochastic_specification specification(m_options.specification);
   resolve_summand_variable_name_clashes(specification);
@@ -146,12 +145,6 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
     mCRL2log(verbose) << "removing unused parts of the data specification." << std::endl;
     std::set<data::function_symbol> extra_function_symbols = lps::find_function_symbols(specification);
     extra_function_symbols.insert(data::sort_real::minus(data::sort_real::real_(), data::sort_real::real_()));
-
-    if (m_options.expl_strat == es_value_prioritized || m_options.expl_strat == es_value_random_prioritized)
-    {
-      extra_function_symbols.insert(data::greater(data::sort_nat::nat()));
-      extra_function_symbols.insert(data::equal_to(data::sort_nat::nat()));
-    }
 
     rewriter = data::rewriter(specification.data(),
                               data::used_data_equation_selector(specification.data(), extra_function_symbols,
@@ -273,62 +266,27 @@ bool lps2lts_algorithm::generate_lts()
     m_output_lts.set_initial_probabilistic_state(transform_initial_probabilistic_state_list(m_initial_states));
   }
 
-  mCRL2log(verbose) << "generating state space with '" << m_options.expl_strat << "' strategy...\n";
+  mCRL2log(verbose) << "generating state space with '" << es_breadth << "' strategy...\n";
 
   if (m_options.max_states == 0)
   {
     return true;
   }
 
-  if (m_options.expl_strat == es_breadth || m_options.expl_strat == es_value_prioritized)
+  if (m_options.todo_max == std::string::npos)
   {
-    if (m_options.todo_max == std::string::npos)
-    {
-      generate_lts_breadth_todo_max_is_npos();
-    }
-    else
-    {
-      generate_lts_breadth_todo_max_is_not_npos(m_initial_states);
-    }
-
-    mCRL2log(verbose) << "done with state space generation ("
-                      << m_level - 1 << " level" << ((m_level == 2) ? "" : "s") << ", "
-                      << m_num_states << " state" << ((m_num_states == 1) ? "" : "s")
-                      << " and " << m_num_transitions << " transition" << ((m_num_transitions == 1) ? "" : "s") << ")"
-                      << std::endl;
-  }
-  else if (m_options.expl_strat == es_depth)
-  {
-    generate_lts_depth(m_initial_states);
-
-    mCRL2log(verbose) << "done with state space generation ("
-                      << m_num_states << " state" << ((m_num_states == 1) ? "" : "s")
-                      << " and " << m_num_transitions << " transition" << ((m_num_transitions == 1) ? "" : "s") << ")"
-                      << std::endl;
-  }
-  else if (m_options.expl_strat == es_random || m_options.expl_strat == es_value_random_prioritized)
-  {
-    // In order to guarantee that time is different from a previous run to initialise
-    // the seed of a previous run and not get the same results, we wait until time gets
-    // a fresh value. It is better to replace this by c++11 random generators, as this
-    // is an awkward solution.
-    for (time_t t = time(nullptr); time(nullptr) == t;)
-    {
-    } // Wait until time changes.
-    srand((unsigned) time(nullptr));
-
-    generate_lts_random(m_initial_states);
-
-    mCRL2log(verbose) << "done with random walk of "
-                      << m_num_transitions << " transition" << ((m_num_transitions == 1) ? "" : "s")
-                      << " (visited " << m_num_states
-                      << " unique state" << ((m_num_states == 1) ? "" : "s") << ")" << std::endl;
+    generate_lts_breadth_todo_max_is_npos();
   }
   else
   {
-    mCRL2log(error) << "unknown exploration strategy" << std::endl;
-    return false;
+    generate_lts_breadth_todo_max_is_not_npos(m_initial_states);
   }
+
+  mCRL2log(verbose) << "done with state space generation ("
+                    << m_level - 1 << " level" << ((m_level == 2) ? "" : "s") << ", "
+                    << m_num_states << " state" << ((m_num_states == 1) ? "" : "s")
+                    << " and " << m_num_transitions << " transition" << ((m_num_transitions == 1) ? "" : "s") << ")"
+                    << std::endl;
 
   return true;
 }

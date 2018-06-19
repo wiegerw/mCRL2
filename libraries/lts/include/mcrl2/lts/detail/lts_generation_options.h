@@ -27,7 +27,6 @@ class lts_generation_options
 {
   private:
     static const std::size_t default_max_states=ULONG_MAX;
-    // static const std::size_t default_bithashsize=209715200ULL; // ~25 MB
     static const std::size_t default_init_tsize=10000UL;
 
   public:
@@ -38,14 +37,10 @@ class lts_generation_options
     bool removeunused = true;
 
     mcrl2::data::rewriter::strategy strat = mcrl2::data::jitty;
-    exploration_strategy expl_strat = es_breadth;
     std::size_t todo_max = (std::numeric_limits< std::size_t >::max)();
     std::size_t max_states = default_max_states;
     std::size_t initial_table_size = default_init_tsize;
     bool suppress_progress_messages = false;
-
-    // bool bithashing = false;
-    // std::size_t bithashsize = default_bithashsize;
 
     mcrl2::lts::lts_type outformat = mcrl2::lts::lts_none;
     bool outinfo = true;
