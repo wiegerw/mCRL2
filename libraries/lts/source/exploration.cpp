@@ -16,63 +16,11 @@
 #include "mcrl2/lps/one_point_rule_rewrite.h"
 #include "mcrl2/lts/detail/exploration.h"
 #include "mcrl2/lts/detail/counter_example.h"
-#include "mcrl2/lts/lts_io.h"
 
 using namespace mcrl2;
 using namespace mcrl2::log;
 using namespace mcrl2::lps;
 using namespace mcrl2::lts;
-
-probabilistic_state<std::size_t, probabilistic_data_expression>
-lps2lts_algorithm::transform_initial_probabilistic_state_list(const next_state_generator::transition::state_probability_list& initial_states)
-{
-  assert(!initial_states.empty());
-  if (++initial_states.begin() == initial_states.end()) // Means initial_states.size()==1
-  {
-    std::size_t state_number = m_state_numbers.put(initial_states.front().state()).first;
-    return probabilistic_state<std::size_t, probabilistic_data_expression>(state_number);
-  }
-  std::vector<state_probability_pair<std::size_t, lps::probabilistic_data_expression>> result;
-  for (const auto& initial_state: initial_states)
-  {
-    std::size_t state_number = m_state_numbers.put(initial_state.state()).first;
-    result.emplace_back(state_number, initial_state.probability());
-  }
-  return probabilistic_state<std::size_t, probabilistic_data_expression>(result.begin(), result.end());
-}
-
-probabilistic_state<std::size_t, probabilistic_data_expression>
-lps2lts_algorithm::create_a_probabilistic_state_from_target_distribution(
-        std::size_t base_state_number,
-        const next_state_generator::transition::state_probability_list& other_probabilities,
-        const lps::state& source_state)
-{
-  if (other_probabilities.empty())
-  {
-    return probabilistic_state<std::size_t, probabilistic_data_expression>(base_state_number);
-  }
-
-  std::vector<state_probability_pair<std::size_t, probabilistic_data_expression> > result;
-
-  probabilistic_data_expression residual_probability = probabilistic_data_expression::one();
-
-  for (const auto& probability: other_probabilities)
-  {
-    if (is_application(probability.probability()) &&
-        atermpp::down_cast<data::application>(probability.probability()).head().size() != 3)
-    {
-      throw mcrl2::runtime_error("The probability " + data::pp(probability.probability()) + " is not a proper rational number.");
-    }
-    residual_probability = data::sort_real::minus(residual_probability, probability.probability());
-    const std::pair<std::size_t, bool> probability_destination_state_number = add_target_state(source_state,
-                                                                                               probability.state());
-    result.emplace_back(probability_destination_state_number.first, probability.probability());
-  }
-
-  residual_probability = (m_generator->rewriter())(residual_probability);
-  result.emplace_back(base_state_number, residual_probability);
-  return probabilistic_state<std::size_t, probabilistic_data_expression>(result.begin(), result.end());
-}
 
 bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* options)
 {
@@ -82,7 +30,7 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
   m_number_of_transitions = 0;
   m_level = 1;
 
-  lps::stochastic_specification specification(m_options.specification);
+  lps::specification specification(m_options.specification);
   resolve_summand_variable_name_clashes(specification);
 
   if (m_options.outformat == lts_aut)
@@ -101,7 +49,7 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
   }
   else
   {
-    mCRL2log(verbose) << "writing state space in " << mcrl2::lts::detail::string_for_type(m_options.outformat)
+    mCRL2log(verbose) << "writing state space in " << "unknown" // mcrl2::lts::detail::string_for_type(m_options.outformat)
                       << " format to '" << m_options.filename << "'." << std::endl;
     m_output_lts.set_data(specification.data());
     m_output_lts.set_process_parameters(specification.process().process_parameters());
@@ -134,10 +82,10 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
   // more lps's to generate lts's. The overhead of this rewriter is limited.
   one_point_rule_rewrite(specification);
 
-  stochastic_action_summand_vector prioritised_summands;
-  stochastic_action_summand_vector nonprioritised_summands;
+  action_summand_vector prioritised_summands;
+  action_summand_vector nonprioritised_summands;
 
-  stochastic_action_summand_vector tau_summands;
+  action_summand_vector tau_summands;
 
   bool compute_actions = m_options.outformat != lts_none;
   if (!compute_actions)
@@ -167,8 +115,11 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
 bool lps2lts_algorithm::generate_lts()
 {
   // First generate a vector of initial states from the initial distribution.
-  m_initial_states = m_generator->initial_states();
-  assert(!m_initial_states.empty());
+//  m_initial_states = m_generator->initial_states();
+//  assert(!m_initial_states.empty());
+
+  atermpp::term_balanced_tree<data::data_expression> initial_state = m_generator->initial_state();
+  m_initial_state_number = 0;
 
   // Count the number of states.
   m_number_of_states = 0;
@@ -177,26 +128,19 @@ bool lps2lts_algorithm::generate_lts()
     m_number_of_states++;
   }
 
-  // Store the initial states in the indexed set.
-  for (auto i = m_initial_states.begin(); i != m_initial_states.end(); ++i)
-  {
-    if (m_state_numbers.put(i->state()).second && m_options.outformat != lts_aut) // The state is new.
-    {
-      m_output_lts.add_state(state_label_lts(i->state()));
-    }
-  }
+  m_state_numbers.put(initial_state);
 
   if (m_options.outformat == lts_aut)
   {
-    m_aut_file << "des(";
-    print_target_distribution_in_aut_format(m_initial_states, lps::state());
     // HACK: this line will be overwritten once generation is finished.
-    m_aut_file << ",0,0)                                          " << std::endl;
+    m_aut_file << "                                                             " << std::endl;
   }
   else if (m_options.outformat != lts_none)
   {
-    m_output_lts.set_initial_probabilistic_state(transform_initial_probabilistic_state_list(m_initial_states));
+    m_initial_state_number = m_output_lts.add_state(state_label_lts(m_generator->initial_state()));
+    m_output_lts.set_initial_state(m_initial_state_number);
   }
+  m_number_of_states = 1;
 
   mCRL2log(verbose) << "generating state space with '" << es_breadth << "' strategy...\n";
 
@@ -222,9 +166,7 @@ bool lps2lts_algorithm::finalise_lts_generation()
   {
     m_aut_file.flush();
     m_aut_file.seekp(0);
-    m_aut_file << "des (";
-    print_target_distribution_in_aut_format(m_initial_states, lps::state());
-    m_aut_file << "," << m_number_of_transitions << "," << m_number_of_states << ")";
+    m_aut_file << "des (" << m_initial_state_number << "," << m_number_of_transitions << "," << m_number_of_states << ")";
     m_aut_file.close();
   }
   else if (m_options.outformat != lts_none)
@@ -239,20 +181,6 @@ bool lps2lts_algorithm::finalise_lts_generation()
       case lts_lts:
       {
         m_output_lts.save(m_options.filename);
-        break;
-      }
-      case lts_fsm:
-      {
-        probabilistic_lts_fsm_t fsm;
-        detail::lts_convert(m_output_lts, fsm);
-        fsm.save(m_options.filename);
-        break;
-      }
-      case lts_dot:
-      {
-        probabilistic_lts_dot_t dot;
-        detail::lts_convert(m_output_lts, dot);
-        dot.save(m_options.filename);
         break;
       }
       default:
@@ -281,53 +209,6 @@ lps2lts_algorithm::add_target_state(const lps::state& source_state, const lps::s
   return destination_state_number;
 }
 
-void lps2lts_algorithm::print_target_distribution_in_aut_format(
-        const lps::next_state_generator::transition::state_probability_list& state_probability_list,
-        std::size_t last_state_number,
-        const lps::state& source_state)
-{
-  for (const auto& state_probability: state_probability_list)
-  {
-    if (m_options.outformat == lts_aut)
-    {
-      const lps::state& probability_destination = state_probability.state();
-      const std::pair<std::size_t, bool> probability_destination_state_number = add_target_state(source_state, probability_destination);
-      if (is_application(state_probability.probability()) &&
-          atermpp::down_cast<data::application>(state_probability.probability()).head().size() != 3)
-      {
-        if (m_options.outformat == lts_aut)
-        {
-          m_aut_file.flush();
-        }
-        throw mcrl2::runtime_error("The probability " + data::pp(state_probability.probability()) + " is not a proper rational number.");
-      }
-      const auto& prob = atermpp::down_cast<data::application>(state_probability.probability());
-      if (prob.head() != data::sort_real::creal())
-      {
-        throw mcrl2::runtime_error(
-                "Probability is not a closed expression with a proper enumerator and denominator: " + pp(
-                        state_probability.probability()) + ".");
-      }
-      m_aut_file << probability_destination_state_number.first << " " << (prob[0]) << "/"
-                 << (prob[1]) << " ";
-    }
-  }
-  m_aut_file << last_state_number;
-}
-
-void lps2lts_algorithm::print_target_distribution_in_aut_format(
-        const lps::next_state_generator::transition::state_probability_list& state_probability_list,
-        const lps::state& source_state)
-{
-  assert(!state_probability_list.empty());
-  const std::pair<std::size_t, bool> a_destination_state_number = add_target_state(source_state,
-                                                                                   state_probability_list.front().state());
-  lps::next_state_generator::transition::state_probability_list temporary_list = state_probability_list;
-  temporary_list.pop_front();
-  print_target_distribution_in_aut_format(temporary_list, a_destination_state_number.first, source_state);
-}
-
-
 bool
 lps2lts_algorithm::add_transition(const lps::state& source_state, const next_state_generator::transition& transition)
 {
@@ -338,40 +219,21 @@ lps2lts_algorithm::add_transition(const lps::state& source_state, const next_sta
   const lps::state& destination = transition.target_state;
   const std::pair<std::size_t, bool> destination_state_number = add_target_state(source_state, destination);
 
-  if (m_options.outformat == lts_aut || m_options.outformat == lts_none)
+  if (m_options.outformat == lts_aut)
   {
-
-    if (m_options.outformat == lts_aut)
-    {
-      m_aut_file << "(" << source_state_number << ",\"" << lps::pp(transition.action) << "\",";
-    }
-
-    print_target_distribution_in_aut_format(transition.m_other_target_states, destination_state_number.first,
-                                            source_state);
-
-    // Close transition.
-    if (m_options.outformat == lts_aut)
-    {
-      m_aut_file << ")\n"; // Intentionally do not use std::endl to avoid flushing.
-    }
+    m_aut_file << "(" << source_state_number << ",\"" << lps::pp(transition.action) << "\"," << destination_state_number.first << ")" << std::endl;
   }
-  else
+  else if (m_options.outformat != lts_none)
   {
-    std::pair<std::size_t, bool> action_label_number = m_action_label_numbers.put(transition.action.actions());
+    std::pair<size_t, bool> action_label_number = m_action_label_numbers.put(transition.action.actions());
     if (action_label_number.second)
     {
-      assert(!transition.action.actions().empty());
-      std::size_t action_number = m_output_lts.add_action(action_label_lts(transition.action));
+      size_t action_number = m_output_lts.add_action(action_label_lts(transition.action));
       assert(action_number == action_label_number.first);
       static_cast <void>(action_number); // Avoid a warning when compiling in non debug mode.
     }
-    std::size_t number_of_a_new_probabilistic_state = m_output_lts.add_probabilistic_state(
-            create_a_probabilistic_state_from_target_distribution(
-                    destination_state_number.first,
-                    transition.m_other_target_states,
-                    source_state)); // Add a new probabilistic state.
-    m_output_lts.add_transition(mcrl2::lts::transition(source_state_number, action_label_number.first,
-                                                       number_of_a_new_probabilistic_state));
+
+    m_output_lts.add_transition(mcrl2::lts::transition(source_state_number, action_label_number.first, destination_state_number.first));
   }
 
   m_number_of_transitions++;

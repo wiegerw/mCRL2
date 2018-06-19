@@ -13,13 +13,12 @@
 #define MCRL2_LTS_DETAIL_LTS_GENERATION_OPTIONS_H
 
 #include "mcrl2/data/rewrite_strategy.h"
-#include "mcrl2/lts/lts_io.h"
 #include "mcrl2/lts/detail/exploration_strategy.h"
 #include "mcrl2/process/action_parse.h"
 
 namespace mcrl2 {
-namespace lts {
 
+namespace lts {
 
 class lts_generation_options
 {
@@ -30,17 +29,17 @@ class lts_generation_options
   public:
     static const std::size_t default_max_traces = ULONG_MAX;
 
-    mcrl2::lps::stochastic_specification specification;
+    lps::specification specification;
     bool instantiate_global_variables = true;
     bool remove_unused_rewrite_rules = true;
 
-    mcrl2::data::rewriter::strategy strat = mcrl2::data::jitty;
+    data::rewriter::strategy strat = data::jitty;
     std::size_t todo_max = (std::numeric_limits<std::size_t>::max)();
     std::size_t max_states = default_max_states;
     std::size_t initial_table_size = default_init_tsize;
     bool suppress_progress_messages = false;
 
-    mcrl2::lts::lts_type outformat = mcrl2::lts::lts_none;
+    lts_type outformat = lts_none;
     bool outinfo = true;
     std::string filename;
 

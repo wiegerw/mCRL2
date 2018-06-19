@@ -39,12 +39,13 @@ class lps2lts_algorithm
 
     atermpp::indexed_set<lps::state> m_state_numbers;
 
-    probabilistic_lts_lts_t m_output_lts;
+    lts_lts_t m_output_lts;
     atermpp::indexed_set<process::action_list> m_action_label_numbers; 
     std::ofstream m_aut_file;
 
     std::size_t m_number_of_states = 0;
     std::size_t m_number_of_transitions = 0;
+    size_t m_initial_state_number; // xxx
     next_state_generator::transition::state_probability_list m_initial_states;
     std::size_t m_level = 0;
 
@@ -85,19 +86,6 @@ class lps2lts_algorithm
                               next_state_generator::enumerator_queue& enumeration_queue
     );
     void generate_lts_breadth_first();
-    void print_target_distribution_in_aut_format(
-               const lps::next_state_generator::transition::state_probability_list& state_probability_list,
-               std::size_t last_state_number,
-               const lps::state& source_state);
-    void print_target_distribution_in_aut_format(
-                const lps::next_state_generator::transition::state_probability_list& state_probability_list,
-                const lps::state& source_state);
-    probabilistic_state<std::size_t, lps::probabilistic_data_expression> transform_initial_probabilistic_state_list
-                 (const next_state_generator::transition::state_probability_list& initial_states);
-    probabilistic_state<std::size_t, lps::probabilistic_data_expression> create_a_probabilistic_state_from_target_distribution(
-               std::size_t base_state_number,
-               const next_state_generator::transition::state_probability_list& other_probabilities,
-               const lps::state& source_state);
 };
 
 } // namespace lps
