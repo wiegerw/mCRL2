@@ -208,14 +208,7 @@ bool lps2lts_algorithm::generate_lts()
     return true;
   }
 
-  if (m_options.todo_max == std::string::npos)
-  {
-    generate_lts_breadth_todo_max_is_npos();
-  }
-  else
-  {
-    generate_lts_breadth_todo_max_is_not_npos(m_initial_states);
-  }
+  generate_lts_breadth_first();
 
   mCRL2log(verbose) << "done with state space generation ("
                     << m_level - 1 << " level" << ((m_level == 2) ? "" : "s") << ", "
@@ -422,9 +415,9 @@ lps2lts_algorithm::is_nondeterministic(std::vector<lps2lts_algorithm::next_state
   return false;
 }
 
-void lps2lts_algorithm::get_transitions(const lps::state& state,
-                                        std::vector<lps2lts_algorithm::next_state_generator::transition>& transitions,
-                                        next_state_generator::enumerator_queue& enumeration_queue
+void lps2lts_algorithm::generate_transitions(const lps::state& state,
+                                             std::vector<lps2lts_algorithm::next_state_generator::transition>& transitions,
+                                             next_state_generator::enumerator_queue& enumeration_queue
 )
 {
   assert(transitions.empty());
@@ -464,9 +457,8 @@ void lps2lts_algorithm::get_transitions(const lps::state& state,
   }
 }
 
-void lps2lts_algorithm::generate_lts_breadth_todo_max_is_npos()
+void lps2lts_algorithm::generate_lts_breadth_first()
 {
-  assert(m_options.todo_max == std::string::npos);
   std::size_t current_state = 0;
   std::size_t start_level_seen = 1;
   std::size_t start_level_transitions = 0;
@@ -477,7 +469,7 @@ void lps2lts_algorithm::generate_lts_breadth_todo_max_is_npos()
   while (!m_must_abort && (current_state < m_state_numbers.size()) && (current_state < m_options.max_states))
   {
     lps::state state = m_state_numbers.get(current_state);
-    get_transitions(state, transitions, enumeration_queue);
+    generate_transitions(state, transitions, enumeration_queue);
     for (const next_state_generator::transition& t: transitions)
     {
       add_transition(state, t);
@@ -508,88 +500,6 @@ void lps2lts_algorithm::generate_lts_breadth_todo_max_is_npos()
 
   if (current_state == m_options.max_states)
   {
-    mCRL2log(verbose) << "explored the maximum number (" << m_options.max_states << ") of states, terminating."
-                      << std::endl;
-  }
-}
-
-void lps2lts_algorithm::generate_lts_breadth_todo_max_is_not_npos(
-        const next_state_generator::transition::state_probability_list& initial_states)
-{
-  assert(m_options.todo_max != std::string::npos);
-  std::size_t current_state = 0;
-  std::size_t start_level_seen = 1;
-  std::size_t start_level_explored = 0;
-  std::size_t start_level_transitions = 0;
-  time_t last_log_time = time(nullptr) - 1, new_log_time;
-
-  queue<lps::state> state_queue;
-  state_queue.set_max_size(m_options.max_states < m_options.todo_max ? m_options.max_states : m_options.todo_max);
-  for (const auto& initial_state: initial_states)
-  {
-    state_queue.add_to_queue(initial_state.state());
-  }
-  state_queue.swap_queues();
-  std::vector<next_state_generator::transition> transitions;
-  next_state_generator::enumerator_queue enumeration_queue;
-
-  while (!m_must_abort && (state_queue.remaining() > 0) && (current_state < m_options.max_states))
-  {
-    const lps::state state = state_queue.get_from_queue();
-    get_transitions(state, transitions, enumeration_queue);
-
-    for (auto& tr: transitions)
-    {
-      if (add_transition(state, tr))
-      {
-        lps::state removed = state_queue.add_to_queue(tr.target_state);
-        if (removed != lps::state())
-        {
-          m_num_states--;
-        }
-      }
-    }
-    transitions.clear();
-
-    if (state_queue.remaining() == 0)
-    {
-      state_queue.swap_queues();
-    }
-
-    current_state++;
-    if (current_state == start_level_seen)
-    {
-      if (!m_options.suppress_progress_messages)
-      {
-        mCRL2log(verbose) << "monitor: level " << m_level << " done."
-                          << " (" << (current_state - start_level_explored) << " state"
-                          << ((current_state - start_level_explored) == 1 ? "" : "s") << ", "
-                          << (m_num_transitions - start_level_transitions) << " transition"
-                          << ((m_num_transitions - start_level_transitions) == 1 ? ")\n" : "s)\n");
-      }
-
-      m_level++;
-      start_level_seen = m_num_states;
-      start_level_explored = current_state;
-      start_level_transitions = m_num_transitions;
-    }
-
-    if (!m_options.suppress_progress_messages && time(&new_log_time) > last_log_time)
-    {
-      last_log_time = new_log_time;
-      std::size_t lvl_states = m_num_states - start_level_seen;
-      std::size_t lvl_transitions = m_num_transitions - start_level_transitions;
-      mCRL2log(status) << std::fixed << std::setprecision(2)
-                       << m_num_states << "st, " << m_num_transitions << "tr"
-                       << ", explored " << 100.0 * ((float) current_state / m_num_states)
-                       << "%. Last level: " << m_level << ", " << lvl_states << "st, " << lvl_transitions
-                       << "tr.\n";
-    }
-  }
-
-  if (current_state == m_options.max_states)
-  {
-    mCRL2log(verbose) << "explored the maximum number (" << m_options.max_states << ") of states, terminating."
-                      << std::endl;
+    mCRL2log(verbose) << "explored the maximum number (" << m_options.max_states << ") of states, terminating." << std::endl;
   }
 }

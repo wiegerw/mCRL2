@@ -86,12 +86,11 @@ class lps2lts_algorithm
                              next_state_generator::transition& nondeterminist_transition);
     std::pair<std::size_t, bool> add_target_state(const lps::state& source_state, const lps::state& target_state);
     bool add_transition(const lps::state& source_state, const next_state_generator::transition& transition);
-    void get_transitions(const lps::state& state,
-                         std::vector<lps2lts_algorithm::next_state_generator::transition>& transitions,
-                         next_state_generator::enumerator_queue& enumeration_queue
+    void generate_transitions(const lps::state& state,
+                              std::vector<lps2lts_algorithm::next_state_generator::transition>& transitions,
+                              next_state_generator::enumerator_queue& enumeration_queue
     );
-    void generate_lts_breadth_todo_max_is_npos();
-    void generate_lts_breadth_todo_max_is_not_npos(const next_state_generator::transition::state_probability_list& initial_states);
+    void generate_lts_breadth_first();
     void print_target_distribution_in_aut_format(
                const lps::next_state_generator::transition::state_probability_list& state_probability_list,
                std::size_t last_state_number,

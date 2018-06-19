@@ -229,7 +229,7 @@ inline void convert_core_lts(CONVERTOR& c,
     }
   } * /
 
-  const std::vector<transition> &trans=lts_in.get_transitions();
+  const std::vector<transition> &trans=lts_in.generate_transitions();
   for (std::vector<transition>::const_iterator r=trans.begin(); r!=trans.end(); ++r)
   {
     lts_out.add_transition(*r);

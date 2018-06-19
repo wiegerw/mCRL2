@@ -164,7 +164,7 @@ transitions in a loop as follows.
 
 .. code-block:: c++
 
-  for (transition_iterator i = l.get_transitions(); i.more(); ++i)
+  for (transition_iterator i = l.generate_transitions(); i.more(); ++i)
   {
 
 We show the states by printing their identifiers (i.e. the unsigned integers),
