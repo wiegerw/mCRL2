@@ -19,7 +19,6 @@
 
 #include "mcrl2/atermpp/detail/shared_subset.h"
 #include "mcrl2/data/enumerator.h"
-#include "mcrl2/lps/probabilistic_data_expression.h"
 #include "mcrl2/lps/state.h"
 #include "mcrl2/lps/state_probability_pair.h"
 #include "mcrl2/lps/specification.h"
@@ -101,20 +100,11 @@ class next_state_generator
         atermpp::detail::shared_subset<next_state_summand>::iterator begin(const lps::state& state);
     };
 
-    typedef mcrl2::lps::state_probability_pair<lps::state, lps::probabilistic_data_expression> state_probability_pair;
-
     struct transition
     {
-      typedef std::forward_list<state_probability_pair> state_probability_list;
-
       lps::multi_action action;
       lps::state target_state;
       std::size_t summand_index;
-
-      // The following list contains all but one target states with their probabity.
-      // m_target_state is the other state, with the residual probability, such
-      // that all probabilities add up to 1.
-      state_probability_list m_other_target_states;
     };
 
     class iterator: public boost::iterator_facade<iterator, const transition, boost::forward_traversal_tag>

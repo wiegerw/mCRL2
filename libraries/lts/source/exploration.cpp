@@ -114,20 +114,8 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
 
 bool lps2lts_algorithm::generate_lts()
 {
-  // First generate a vector of initial states from the initial distribution.
-//  m_initial_states = m_generator->initial_states();
-//  assert(!m_initial_states.empty());
-
   atermpp::term_balanced_tree<data::data_expression> initial_state = m_generator->initial_state();
   m_initial_state_number = 0;
-
-  // Count the number of states.
-  m_number_of_states = 0;
-  for (auto i = m_initial_states.begin(); i != m_initial_states.end(); ++i)
-  {
-    m_number_of_states++;
-  }
-
   m_state_numbers.put(initial_state);
 
   if (m_options.outformat == lts_aut)
@@ -156,7 +144,6 @@ bool lps2lts_algorithm::generate_lts()
                     << m_number_of_states << " state" << ((m_number_of_states == 1) ? "" : "s")
                     << " and " << m_number_of_transitions << " transition" << ((m_number_of_transitions == 1) ? "" : "s") << ")"
                     << std::endl;
-
   return true;
 }
 
@@ -228,7 +215,7 @@ lps2lts_algorithm::add_transition(const lps::state& source_state, const next_sta
     std::pair<size_t, bool> action_label_number = m_action_label_numbers.put(transition.action.actions());
     if (action_label_number.second)
     {
-      size_t action_number = m_output_lts.add_action(action_label_lts(transition.action));
+      std::size_t action_number = m_output_lts.add_action(action_label_lts(transition.action));
       assert(action_number == action_label_number.first);
       static_cast <void>(action_number); // Avoid a warning when compiling in non debug mode.
     }

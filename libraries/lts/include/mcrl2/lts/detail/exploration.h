@@ -18,7 +18,6 @@
 #include "mcrl2/trace/trace.h"
 #include "mcrl2/lps/next_state_generator.h"
 #include "mcrl2/lts/lts_lts.h"
-#include "mcrl2/lts/detail/bithashtable.h"
 #include "mcrl2/lts/detail/queue.h"
 #include "mcrl2/lts/detail/lts_generation_options.h"
 #include "mcrl2/lts/detail/exploration_strategy.h"
@@ -45,8 +44,7 @@ class lps2lts_algorithm
 
     std::size_t m_number_of_states = 0;
     std::size_t m_number_of_transitions = 0;
-    size_t m_initial_state_number; // xxx
-    next_state_generator::transition::state_probability_list m_initial_states;
+    size_t m_initial_state_number = 0;
     std::size_t m_level = 0;
 
     volatile bool m_must_abort = false;

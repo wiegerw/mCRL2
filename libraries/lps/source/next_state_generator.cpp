@@ -334,19 +334,6 @@ next_state_generator::iterator::iterator(next_state_generator* generator, const 
   increment();
 }
 
-struct is_not_zero
-{
-  // The argument intentionally does not have the type probabilistic_data_expression,
-  // as this invokes == on probabilistic data expressions, which expects two fractions.
-  // The enumerator can also generate open data expressions, which == on probabilistic_data_expressions
-  // cannot handle.
-  bool operator()(const data_expression& x) const
-  {
-    assert(x.sort() == sort_real::real_());
-    return x != probabilistic_data_expression::zero();
-  }
-};
-
 void next_state_generator::iterator::increment()
 {
   while (!m_summand ||
@@ -479,7 +466,6 @@ void next_state_generator::iterator::increment()
 
   const data_expression_vector& state_args = m_summand->result_state;
   m_transition.target_state = lps::state(state_args.begin(), state_args.size(), [&](const data::data_expression& x) { return m_generator->m_rewriter(x, *m_substitution); });
-  m_transition.m_other_target_states = transition::state_probability_list();
 
   std::vector<process::action> actions;
   actions.resize(m_summand->action_label.size());

@@ -26,11 +26,6 @@
 #include "mcrl2/lts/lts_io.h"
 #include "mcrl2/lts/detail/exploration.h"
 
-#ifdef MCRL2_DISPLAY_REWRITE_STATISTICS
-#include "mcrl2/data/detail/rewrite_statistics.h"
-#endif
-
-using namespace std;
 using namespace mcrl2::utilities::tools;
 using namespace mcrl2::utilities;
 using namespace mcrl2::core;
@@ -217,7 +212,7 @@ class lps2lts_tool : public lps2lts_base
       {
         parser.error("Too many file arguments.");
       }
-      if (0 < parser.arguments.size())
+      if (!parser.arguments.empty())
       {
         m_filename = parser.arguments[0];
       }
@@ -262,9 +257,6 @@ int main(int argc, char** argv)
   try
   {
     result = tool_instance->execute(argc, argv);
-#ifdef MCRL2_DISPLAY_REWRITE_STATISTICS
-    mcrl2::data::detail::display_rewrite_statistics();
-#endif
   }
   catch (...)
   {
