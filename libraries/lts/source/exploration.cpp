@@ -44,7 +44,7 @@ lps2lts_algorithm::transform_initial_probabilistic_state_list
 
 probabilistic_state<std::size_t, probabilistic_data_expression>
 lps2lts_algorithm::create_a_probabilistic_state_from_target_distribution(
-        const std::size_t base_state_number,
+        std::size_t base_state_number,
         const next_state_generator::transition::state_probability_list& other_probabilities,
         const lps::state& source_state)
 {
@@ -62,8 +62,7 @@ lps2lts_algorithm::create_a_probabilistic_state_from_target_distribution(
     if (is_application(probability.probability()) &&
         atermpp::down_cast<data::application>(probability.probability()).head().size() != 3)
     {
-      throw mcrl2::runtime_error(
-              "The probability " + data::pp(probability.probability()) + " is not a proper rational number.");
+      throw mcrl2::runtime_error("The probability " + data::pp(probability.probability()) + " is not a proper rational number.");
     }
     residual_probability = data::sort_real::minus(residual_probability, probability.probability());
     const std::pair<std::size_t, bool> probability_destination_state_number = add_target_state(source_state,
@@ -76,35 +75,14 @@ lps2lts_algorithm::create_a_probabilistic_state_from_target_distribution(
   return probabilistic_state<std::size_t, probabilistic_data_expression>(result.begin(), result.end());
 }
 
-bool is_hidden_summand(const mcrl2::process::action_list& l,
-                       const std::set<core::identifier_string>& internal_action_labels)
-{
-  // Note that if l is empty, true is returned, as desired.
-  for (const mcrl2::process::action& a: l)
-  {
-    if (internal_action_labels.count(a.label().name()) ==
-        0) // Not found, s has a visible action among its multi-actions.
-    {
-      return false;
-    }
-  }
-  return true;
-}
-
 bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* options)
 {
   m_options = *options;
-
-  assert(!(false && m_options.outformat != lts_aut && m_options.outformat != lts_none));
-
   m_state_numbers = atermpp::indexed_set<lps::state>(m_options.initial_table_size, 50);
-
   m_num_states = 0;
   m_num_transitions = 0;
   m_level = 1;
   m_traces_saved = 0;
-
-  m_maintain_traces = m_options.trace || m_options.save_error_trace;
 
   lps::stochastic_specification specification(m_options.specification);
   resolve_summand_variable_name_clashes(specification);
@@ -164,8 +142,7 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
 
   stochastic_action_summand_vector tau_summands;
 
-  bool compute_actions =
-          m_options.outformat != lts_none || !m_options.trace_multiactions.empty() || m_maintain_traces;
+  bool compute_actions = m_options.outformat != lts_none;
   if (!compute_actions)
   {
     for (auto& summand: specification.process().action_summands())
@@ -296,166 +273,6 @@ bool lps2lts_algorithm::finalise_lts_generation()
   return true;
 }
 
-void lps2lts_algorithm::construct_trace(const lps::state& state1, mcrl2::trace::Trace& trace)
-{
-  lps::state state = state1;
-  std::deque<lps::state> states;
-  std::map<lps::state, lps::state>::iterator source;
-  while ((source = m_backpointers.find(state)) != m_backpointers.end())
-  {
-    states.push_front(state);
-    state = source->second;
-  }
-
-  trace.setState(state);
-  next_state_generator::enumerator_queue enumeration_queue;
-  for (auto& s: states)
-  {
-    for (auto j = m_generator->begin(state, &enumeration_queue); j != m_generator->end(); j++)
-    {
-      lps::state destination = j->target_state;
-      if (destination == s)
-      {
-        trace.addAction(j->action);
-        break;
-      }
-    }
-    enumeration_queue.clear();
-    state = s;
-    trace.setState(state);
-  }
-
-}
-
-// Contruct a trace to state1 and store in in filename.
-bool lps2lts_algorithm::save_trace(const lps::state& state1, const std::string& filename)
-{
-  mcrl2::trace::Trace trace;
-  lps2lts_algorithm::construct_trace(state1, trace);
-  m_traces_saved++;
-
-  try
-  {
-    trace.save(filename);
-    return true;
-  }
-  catch (...)
-  {
-    return false;
-  }
-}
-
-// Contruct a trace to state1, then add transition to it and store in in filename.
-bool lps2lts_algorithm::save_trace(const lps::state& state1,
-                                   const next_state_generator::transition& transition,
-                                   const std::string& filename)
-{
-  mcrl2::trace::Trace trace;
-  lps2lts_algorithm::construct_trace(state1, trace);
-  trace.addAction(transition.action);
-  trace.setState(transition.target_state);
-  m_traces_saved++;
-
-  try
-  {
-    trace.save(filename);
-    return true;
-  }
-  catch (...)
-  {
-    return false;
-  }
-}
-
-void lps2lts_algorithm::save_actions(const lps::state& state, const next_state_generator::transition& transition)
-{
-  auto state_number = m_state_numbers.index(state);
-  mCRL2log(info) << "Detected action '" << pp(transition.action) << "' (state index " << state_number << ")";
-  if (m_options.trace && m_traces_saved < m_options.max_traces)
-  {
-    std::string filename = m_options.trace_prefix + "_act_" + std::to_string(m_traces_saved);
-    if (m_options.trace_multiactions.find(transition.action) != m_options.trace_multiactions.end())
-    {
-      filename = filename + "_" + pp(transition.action);
-    }
-    for (const process::action& a: transition.action.actions())
-    {
-      if (m_options.trace_actions.count(a.label().name()) > 0)
-      {
-        filename = filename + "_" + core::pp(a.label().name());
-      }
-    }
-    filename = filename + ".trc";
-    if (save_trace(state, transition, filename))
-      mCRL2log(info) << " and saved to '" << filename << "'";
-    else mCRL2log(info) << " but it could not saved to '" << filename << "'";
-  }
-  mCRL2log(info) << std::endl;
-}
-
-void lps2lts_algorithm::save_nondeterministic_state(const lps::state& state,
-                                                    const next_state_generator::transition& nondeterminist_transition)
-{
-  auto state_number = m_state_numbers.index(state);
-  if (m_options.trace && m_traces_saved < m_options.max_traces)
-  {
-    std::string filename = m_options.trace_prefix + "_nondeterministic_" + std::to_string(m_traces_saved) + ".trc";
-    if (save_trace(state, nondeterminist_transition, filename))
-    {
-      mCRL2log(info) << "Nondeterministic state found and saved to '" << filename
-                     << "' (state index: " << state_number << ").\n";
-    }
-    else
-    {
-      mCRL2log(info) << "Nondeterministic state found, but its trace could not be saved to '" << filename
-                     << "' (state index: " << state_number << ").\n";
-    }
-  }
-  else
-  {
-    mCRL2log(info) << "Nondeterministic state found (state index: " << state_number << ").\n";
-  }
-}
-
-void lps2lts_algorithm::save_deadlock(const lps::state& state)
-{
-  auto state_number = m_state_numbers.index(state);
-  if (m_options.trace && m_traces_saved < m_options.max_traces)
-  {
-    std::string filename = m_options.trace_prefix + "_dlk_" + std::to_string(m_traces_saved) + ".trc";
-    if (save_trace(state, filename))
-    {
-      mCRL2log(info) << "deadlock-detect: deadlock found and saved to '" << filename
-                     << "' (state index: " << state_number << ").\n";
-    }
-    else
-    {
-      mCRL2log(info) << "deadlock-detect: deadlock found, but its trace could not be saved to '" << filename
-                     << "' (state index: " << state_number << ").\n";
-    }
-  }
-  else
-  {
-    mCRL2log(info) << "deadlock-detect: deadlock found (state index: " << state_number << ").\n";
-  }
-}
-
-void lps2lts_algorithm::save_error(const lps::state& state)
-{
-  if (m_options.save_error_trace)
-  {
-    std::string filename = m_options.trace_prefix + "_error.trc";
-    if (save_trace(state, filename))
-    {
-      mCRL2log(verbose) << "saved trace to error in '" << filename << "'.\n";
-    }
-    else
-    {
-      mCRL2log(verbose) << "trace to error could not be saved in '" << filename << "'.\n";
-    }
-  }
-}
-
 // Add the target state to the transition system, and if necessary store it to be investigated later.
 // Return the number of the target state.
 std::pair<std::size_t, bool>
@@ -466,12 +283,6 @@ lps2lts_algorithm::add_target_state(const lps::state& source_state, const lps::s
   if (destination_state_number.second) // The state is new.
   {
     m_num_states++;
-    if (m_maintain_traces)
-    {
-      assert(m_backpointers.count(target_state) == 0);
-      m_backpointers[target_state] = source_state;
-    }
-
     if (m_options.outformat != lts_none && m_options.outformat != lts_aut)
     {
       m_output_lts.add_state(state_label_lts(target_state));
@@ -482,7 +293,7 @@ lps2lts_algorithm::add_target_state(const lps::state& source_state, const lps::s
 
 void lps2lts_algorithm::print_target_distribution_in_aut_format(
         const lps::next_state_generator::transition::state_probability_list& state_probability_list,
-        const std::size_t last_state_number,
+        std::size_t last_state_number,
         const lps::state& source_state)
 {
   for (const auto& state_probability: state_probability_list)
@@ -575,15 +386,6 @@ lps2lts_algorithm::add_transition(const lps::state& source_state, const next_sta
   }
 
   m_num_transitions++;
-
-  for (const auto& a: m_options.trace_multiactions)
-  {
-    if (a == transition.action)
-    {
-      save_actions(source_state, transition);
-    }
-  }
-
   return destination_state_number.second;
 }
 
@@ -600,7 +402,7 @@ lps2lts_algorithm::is_nondeterministic(std::vector<lps2lts_algorithm::next_state
   assert(sorted_transitions.empty());
   for (const lps2lts_algorithm::next_state_generator::transition& t: transitions)
   {
-    const std::map<lps::multi_action, lps::state>::const_iterator i = sorted_transitions.find(t.action);
+    auto i = sorted_transitions.find(t.action);
     if (i != sorted_transitions.end())
     {
       if (i->second != t.target_state)
@@ -638,7 +440,6 @@ void lps2lts_algorithm::get_transitions(const lps::state& state,
   catch (mcrl2::runtime_error& e)
   {
     mCRL2log(error) << "Error while exploring state space: " << e.what() << "\n";
-    save_error(state);
     if (m_options.outformat == lts_aut)
     {
       m_aut_file.flush();
@@ -648,7 +449,7 @@ void lps2lts_algorithm::get_transitions(const lps::state& state,
 
   if (m_options.detect_deadlock && transitions.empty())
   {
-    save_deadlock(state);
+    // save_deadlock(state);
   }
 
   if (m_options.detect_nondeterminism)
@@ -658,7 +459,7 @@ void lps2lts_algorithm::get_transitions(const lps::state& state,
     {
       // save the trace to the nondeterministic state and one transition to indicate
       // which transition is nondeterministic. 
-      save_nondeterministic_state(state, nondeterministic_transition);
+      // save_nondeterministic_state(state, nondeterministic_transition);
     }
   }
 }
@@ -673,8 +474,7 @@ void lps2lts_algorithm::generate_lts_breadth_todo_max_is_npos()
   time_t last_log_time = time(nullptr) - 1, new_log_time;
   next_state_generator::enumerator_queue enumeration_queue;
 
-  while (!m_must_abort && (current_state < m_state_numbers.size()) &&
-         (current_state < m_options.max_states) && (!m_options.trace || m_traces_saved < m_options.max_traces))
+  while (!m_must_abort && (current_state < m_state_numbers.size()) && (current_state < m_options.max_states))
   {
     lps::state state = m_state_numbers.get(current_state);
     get_transitions(state, transitions, enumeration_queue);
@@ -733,8 +533,7 @@ void lps2lts_algorithm::generate_lts_breadth_todo_max_is_not_npos(
   std::vector<next_state_generator::transition> transitions;
   next_state_generator::enumerator_queue enumeration_queue;
 
-  while (!m_must_abort && (state_queue.remaining() > 0) &&
-         (current_state < m_options.max_states) && (!m_options.trace || m_traces_saved < m_options.max_traces))
+  while (!m_must_abort && (state_queue.remaining() > 0) && (current_state < m_options.max_states))
   {
     const lps::state state = state_queue.get_from_queue();
     get_transitions(state, transitions, enumeration_queue);

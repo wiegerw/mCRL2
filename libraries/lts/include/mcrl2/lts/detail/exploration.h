@@ -23,38 +23,9 @@
 #include "mcrl2/lts/detail/lts_generation_options.h"
 #include "mcrl2/lts/detail/exploration_strategy.h"
 
+namespace mcrl2 {
 
-namespace mcrl2
-{
-namespace lts
-{
-namespace detail
-{
-
-    template <class COUNTER_EXAMPLE_GENERATOR>
-    class state_index_pair
-    {
-      protected:
-        lps::state m_state;
-        typename COUNTER_EXAMPLE_GENERATOR::index_type m_index;
-    
-      public:
-        state_index_pair(const lps::state& state, typename COUNTER_EXAMPLE_GENERATOR::index_type index)
-         : m_state(state),
-           m_index(index)
-        {}
-    
-        lps::state state() const
-        {
-          return m_state;
-        }
-    
-        typename COUNTER_EXAMPLE_GENERATOR::index_type index() const
-        {
-          return m_index;
-        }
-    };
-} // end namespace detail
+namespace lts {
 
 class lps2lts_algorithm
 {
@@ -67,13 +38,10 @@ class lps2lts_algorithm
     next_state_generator::summand_subset *m_main_subset;
 
     atermpp::indexed_set<lps::state> m_state_numbers;
-    bit_hash_table m_bit_hash_table;
 
     probabilistic_lts_lts_t m_output_lts;
     atermpp::indexed_set<process::action_list> m_action_label_numbers; 
     std::ofstream m_aut_file;
-
-    bool m_maintain_traces;
 
     std::map<lps::state, lps::state> m_backpointers;
     std::size_t m_traces_saved;
@@ -114,16 +82,8 @@ class lps2lts_algorithm
     }
 
   private:
-    bool save_trace(const lps::state& state1, const std::string& filename);
-    bool save_trace(const lps::state& state1, const next_state_generator::transition& transition, const std::string& filename);
-    void construct_trace(const lps::state& state1, mcrl2::trace::Trace& trace);
-
     bool is_nondeterministic(std::vector<lps2lts_algorithm::next_state_generator::transition>& transitions,
                              next_state_generator::transition& nondeterminist_transition);
-    void save_actions(const lps::state& state, const next_state_generator::transition& transition);
-    void save_deadlock(const lps::state& state);
-    void save_nondeterministic_state(const lps::state& state, const next_state_generator::transition& nondeterminist_transition);
-    void save_error(const lps::state& state);
     std::pair<std::size_t, bool> add_target_state(const lps::state& source_state, const lps::state& target_state);
     bool add_transition(const lps::state& source_state, const next_state_generator::transition& transition);
     void get_transitions(const lps::state& state,
@@ -134,7 +94,7 @@ class lps2lts_algorithm
     void generate_lts_breadth_todo_max_is_not_npos(const next_state_generator::transition::state_probability_list& initial_states);
     void print_target_distribution_in_aut_format(
                const lps::next_state_generator::transition::state_probability_list& state_probability_list,
-               const std::size_t last_state_number,
+               std::size_t last_state_number,
                const lps::state& source_state);
     void print_target_distribution_in_aut_format(
                 const lps::next_state_generator::transition::state_probability_list& state_probability_list,
@@ -142,7 +102,7 @@ class lps2lts_algorithm
     probabilistic_state<std::size_t, lps::probabilistic_data_expression> transform_initial_probabilistic_state_list
                  (const next_state_generator::transition::state_probability_list& initial_states);
     probabilistic_state<std::size_t, lps::probabilistic_data_expression> create_a_probabilistic_state_from_target_distribution(
-               const std::size_t base_state_number,
+               std::size_t base_state_number,
                const next_state_generator::transition::state_probability_list& other_probabilities,
                const lps::state& source_state);
 

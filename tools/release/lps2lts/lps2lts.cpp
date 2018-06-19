@@ -163,18 +163,6 @@ class lps2lts_tool : public lps2lts_base
                  "detect nondeterministic states, i.e. states with outgoing transitions with the same label to different states. ", 'n').
       add_option("deadlock",
                  "detect deadlocks (i.e. for every deadlock a message is printed). ", 'D').
-      add_option("trace", make_optional_argument("NUM", std::to_string(lts_generation_options::default_max_traces)),
-                 "Write a shortest trace to each state that is reached with an action from NAMES "
-                 "with the option --action, is a deadlock with the option --deadlock, is nondeterministic with the option --nondeterminism, or is a "
-                 "divergence with the option --divergence to a file. "
-                 "No more than NUM traces will be written. If NUM is not supplied the number of "
-                 "traces is unbounded. "
-                 "For each trace that is to be written a unique file with extension .trc (trace) "
-                 "will be created containing a shortest trace from the initial state to the deadlock "
-                 "state. The traces can be pretty printed and converted to other formats using tracepp. ", 't').
-      add_option("error-trace",
-                 "if an error occurs during exploration, save a trace to the state that could "
-                 "not be explored. ").
       add_option("out", make_mandatory_argument("FORMAT"),
                  "save the output in the specified FORMAT. ", 'o').
       add_option("no-info", "do not add state information to OUTFILE. "

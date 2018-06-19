@@ -17,27 +17,25 @@
 #include "mcrl2/lts/detail/exploration_strategy.h"
 #include "mcrl2/process/action_parse.h"
 
-namespace mcrl2
-{
-namespace lts
-{
+namespace mcrl2 {
+namespace lts {
 
 
 class lts_generation_options
 {
   private:
-    static const std::size_t default_max_states=ULONG_MAX;
-    static const std::size_t default_init_tsize=10000UL;
+    static const std::size_t default_max_states = ULONG_MAX;
+    static const std::size_t default_init_tsize = 10000UL;
 
   public:
-    static const std::size_t default_max_traces=ULONG_MAX;
+    static const std::size_t default_max_traces = ULONG_MAX;
 
     mcrl2::lps::stochastic_specification specification;
     bool usedummies = true;
     bool removeunused = true;
 
     mcrl2::data::rewriter::strategy strat = mcrl2::data::jitty;
-    std::size_t todo_max = (std::numeric_limits< std::size_t >::max)();
+    std::size_t todo_max = (std::numeric_limits<std::size_t>::max)();
     std::size_t max_states = default_max_states;
     std::size_t initial_table_size = default_init_tsize;
     bool suppress_progress_messages = false;
@@ -53,9 +51,9 @@ class lts_generation_options
     bool detect_deadlock = false;
     bool detect_nondeterminism = false;
     bool detect_action = false;
-    std::set < mcrl2::core::identifier_string > trace_actions;
-    std::set < std::string > trace_multiaction_strings;
-    std::set < mcrl2::lps::multi_action > trace_multiactions;
+    std::set<mcrl2::core::identifier_string> trace_actions;
+    std::set<std::string> trace_multiaction_strings;
+    std::set<mcrl2::lps::multi_action> trace_multiactions;
 
     bool use_enumeration_caching = false;
 
@@ -63,7 +61,7 @@ class lts_generation_options
     lts_generation_options() = default;
 
     /// \brief Copy assignment operator.
-    lts_generation_options& operator=(const lts_generation_options& )=default;
+    lts_generation_options& operator=(const lts_generation_options&) = default;
 
     void validate_actions()
     {
@@ -84,11 +82,11 @@ class lts_generation_options
         for (const mcrl2::core::identifier_string& ta: trace_actions)
         {
           bool found = (std::string(ta) == "tau");
-          for(const process::action_label& al: specification.action_labels())
+          for (const process::action_label& al: specification.action_labels())
           {
             if (al.name() == ta)
             {
-              found=true;
+              found = true;
               break;
             }
           }
