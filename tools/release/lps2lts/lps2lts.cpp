@@ -155,15 +155,6 @@ class lps2lts_tool : public lps2lts_base
                  "replace free variables in the LPS with dummy values based on the value of BOOL: 'yes' (default) or 'no'. ", 'y').
       add_option("unused-data",
                  "do not remove unused parts of the data specification. ", 'u').
-      add_option("bit-hash", make_optional_argument("NUM", "200000000"),
-                 "use bit hashing to store states and store at most NUM states. "
-                 "This means that instead of keeping a full record of all states "
-                 "that have been visited, a bit array is used that indicate whether "
-                 "or not a hash of a state has been seen before. Although this means "
-                 "that this option may cause states to be mistaken for others (because "
-                 "they are mapped to the same hash), it can be useful to explore very "
-                 "large LTSs that are otherwise not explorable. The default value for NUM is "
-                 "2*10^8 (this corresponds to 25MB of memory). ",'b').
       add_option("max", make_mandatory_argument("NUM"),
                  "explore at most NUM states", 'l').
       add_option("todo-max", make_mandatory_argument("NUM"),
@@ -201,12 +192,6 @@ class lps2lts_tool : public lps2lts_base
       add_option("error-trace",
                  "if an error occurs during exploration, save a trace to the state that could "
                  "not be explored. ").
-      add_option("confluence", make_optional_argument("NAME", "ctau"),
-                 "apply prioritization of transitions with the action label NAME. "
-                 "(when no NAME is supplied (i.e., '-c') priority is given to the action 'ctau'. To give priority to "
-                 "to tau use the flag -ctau. Note that if the linear process is not tau-confluent, the generated "
-                 "state space is necessarily branching bisimilar to the state space of the lps. The generation "
-                 "algorithm that is used does not require the linear process to be tau convergent. ", 'c').
       add_option("strategy", make_enum_argument<exploration_strategy>("NAME")
                  .add_value_short(es_breadth, "b", true)
                  .add_value_short(es_depth, "d")
@@ -270,11 +255,6 @@ class lps2lts_tool : public lps2lts_base
         }
       }
 
-      if (parser.options.count("bit-hash"))
-      {
-        m_options.bithashing  = true;
-        m_options.bithashsize = parser.option_argument_as< unsigned long > ("bit-hash");
-      }
       if (parser.options.count("max"))
       {
         m_options.max_states = parser.option_argument_as< unsigned long > ("max");
@@ -309,10 +289,6 @@ class lps2lts_tool : public lps2lts_base
       {
         m_options.trace      = true;
         m_options.max_traces = parser.option_argument_as< unsigned long > ("trace");
-      }
-      if (parser.options.count("confluence"))
-      {
-        m_options.priority_action = parser.option_argument("confluence");
       }
 
       m_options.expl_strat = parser.option_argument_as<exploration_strategy>("strategy");

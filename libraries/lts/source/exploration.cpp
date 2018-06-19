@@ -95,16 +95,9 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
 {
   m_options = *options;
 
-  assert(!(m_options.bithashing && m_options.outformat != lts_aut && m_options.outformat != lts_none));
+  assert(!(false && m_options.outformat != lts_aut && m_options.outformat != lts_none));
 
-  if (m_options.bithashing)
-  {
-    m_bit_hash_table = bit_hash_table(m_options.bithashsize);
-  }
-  else
-  {
-    m_state_numbers = atermpp::indexed_set<lps::state>(m_options.initial_table_size, 50);
-  }
+  m_state_numbers = atermpp::indexed_set<lps::state>(m_options.initial_table_size, 50);
 
   m_num_states = 0;
   m_num_transitions = 0;
@@ -285,19 +278,12 @@ bool lps2lts_algorithm::generate_lts()
     m_num_states++;
   }
 
-  if (m_options.bithashing)
+  // Store the initial states in the indexed set.
+  for (auto i = m_initial_states.begin(); i != m_initial_states.end(); ++i)
   {
-    m_bit_hash_table.add_states(m_initial_states);
-  }
-  else
-  {
-    // Store the initial states in the indexed set.
-    for (auto i = m_initial_states.begin(); i != m_initial_states.end(); ++i)
+    if (m_state_numbers.put(i->state()).second && m_options.outformat != lts_aut) // The state is new.
     {
-      if (m_state_numbers.put(i->state()).second && m_options.outformat != lts_aut) // The state is new.
-      {
-        m_output_lts.add_state(state_label_lts(i->state()));
-      }
+      m_output_lts.add_state(state_label_lts(i->state()));
     }
   }
 
@@ -322,20 +308,13 @@ bool lps2lts_algorithm::generate_lts()
 
   if (m_options.expl_strat == es_breadth || m_options.expl_strat == es_value_prioritized)
   {
-    if (m_options.bithashing)
+    if (m_options.todo_max == std::string::npos)
     {
-      generate_lts_breadth_bithashing(m_initial_states);
+      generate_lts_breadth_todo_max_is_npos();
     }
     else
     {
-      if (m_options.todo_max == std::string::npos)
-      {
-        generate_lts_breadth_todo_max_is_npos();
-      }
-      else
-      {
-        generate_lts_breadth_todo_max_is_not_npos(m_initial_states);
-      }
+      generate_lts_breadth_todo_max_is_not_npos(m_initial_states);
     }
 
     mCRL2log(verbose) << "done with state space generation ("
@@ -839,14 +818,7 @@ std::pair<std::size_t, bool>
 lps2lts_algorithm::add_target_state(const lps::state& source_state, const lps::state& target_state)
 {
   std::pair<std::size_t, bool> destination_state_number;
-  if (m_options.bithashing)
-  {
-    destination_state_number = m_bit_hash_table.add_state(target_state);
-  }
-  else
-  {
-    destination_state_number = m_state_numbers.put(target_state);
-  }
+  destination_state_number = m_state_numbers.put(target_state);
   if (destination_state_number.second) // The state is new.
   {
     m_num_states++;
@@ -858,7 +830,6 @@ lps2lts_algorithm::add_target_state(const lps::state& source_state, const lps::s
 
     if (m_options.outformat != lts_none && m_options.outformat != lts_aut)
     {
-      assert(!m_options.bithashing);
       m_output_lts.add_state(state_label_lts(target_state));
     }
   }
@@ -919,14 +890,7 @@ lps2lts_algorithm::add_transition(const lps::state& source_state, const next_sta
 {
 
   std::size_t source_state_number;
-  if (m_options.bithashing)
-  {
-    source_state_number = m_bit_hash_table.add_state(source_state).first;
-  }
-  else
-  {
-    source_state_number = m_state_numbers[source_state];
-  }
+  source_state_number = m_state_numbers[source_state];
 
   const lps::state& destination = transition.target_state;
   const std::pair<std::size_t, bool> destination_state_number = add_target_state(source_state, destination);
