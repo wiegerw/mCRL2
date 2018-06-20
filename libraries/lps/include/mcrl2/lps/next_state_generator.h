@@ -1,4 +1,5 @@
-// Author(s): Ruud Koolen
+// Author(s): Wieger Wesselink 2010 - 2018
+//            Ruud Koolen
 // Copyright: see the accompanying file COPYING or copy at
 // https://github.com/mCRL2org/mCRL2/blob/master/COPYING
 //
