@@ -87,23 +87,15 @@ class lps2lts_tool : public lps2lts_base
     {
       load_lps(m_options.specification, m_filename);
 
-      if (!m_lps2lts.initialise_lts_generation(&m_options))
-      {
-        return false;
-      }
-
       try
       {
-        m_lps2lts.generate_lts();
+        m_lps2lts.generate_lts(m_options);
       }
       catch (mcrl2::runtime_error& e)
       {
         mCRL2log(error) << e.what() << std::endl;
-        m_lps2lts.finalise_lts_generation();
         return false;
       }
-
-      m_lps2lts.finalise_lts_generation();
 
       return true;
     }
@@ -251,8 +243,8 @@ int main(int argc, char** argv)
   int result;
   tool_instance = new lps2lts_tool();
 
-  signal(SIGABRT,premature_termination_handler);
-  signal(SIGINT,premature_termination_handler); // At ^C invoke the termination handler.
+  signal(SIGABRT, premature_termination_handler);
+  signal(SIGINT, premature_termination_handler); // At ^C invoke the termination handler.
 
   try
   {

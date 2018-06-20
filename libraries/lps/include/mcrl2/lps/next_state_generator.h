@@ -31,10 +31,8 @@ class next_state_generator
   public:
     typedef atermpp::term_appl<data::data_expression> enumeration_cache_key;
     typedef std::list<data::data_expression_list> enumeration_cache_value;
-
     typedef data::enumerator_algorithm_with_iterator<> enumerator;
     typedef std::deque<data::enumerator_list_element_with_substitution<>> enumerator_queue;
-
     typedef data::rewriter::substitution_type rewriter_substitution;
 
   protected:

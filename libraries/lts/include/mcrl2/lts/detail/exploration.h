@@ -31,7 +31,7 @@ class lps2lts_algorithm
   private:
     lts_generation_options m_options;
     lps::next_state_generator* m_generator = nullptr;
-    lps::next_state_generator::summand_subset* m_main_subset = nullptr;
+    lps::next_state_generator::summand_subset m_main_subset;
 
     atermpp::indexed_set<lps::state> m_state_numbers;
 
@@ -57,9 +57,7 @@ class lps2lts_algorithm
       delete m_generator;
     }
 
-    bool initialise_lts_generation(lts_generation_options* options);
-    bool generate_lts();
-    bool finalise_lts_generation();
+    bool generate_lts(const lts_generation_options& options);
 
     void abort()
     {
@@ -73,9 +71,16 @@ class lps2lts_algorithm
     }
 
   private:
+    bool initialise_lts_generation(const lts_generation_options& options);
+    bool finalise_lts_generation();
+
     bool is_nondeterministic(std::vector<lps::next_state_generator::transition>& transitions, lps::next_state_generator::transition& nondeterminist_transition);
+
+    // The bool return value indicates if the state already existed.
     std::pair<std::size_t, bool> add_target_state(const lps::state& source_state, const lps::state& target_state);
+
     bool add_transition(const lps::state& source_state, const lps::next_state_generator::transition& transition);
+
     void generate_transitions(const lps::state& state,
                               std::vector<lps::next_state_generator::transition>& transitions,
                               lps::next_state_generator::enumerator_queue& enumeration_queue

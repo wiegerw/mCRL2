@@ -21,9 +21,9 @@ namespace mcrl2 {
 
 namespace lts {
 
-bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* options)
+bool lps2lts_algorithm::initialise_lts_generation(const lts_generation_options& options)
 {
-  m_options = *options;
+  m_options = options;
   m_state_numbers = atermpp::indexed_set<lps::state>(m_options.initial_table_size, 50);
   m_number_of_states = 0;
   m_number_of_transitions = 0;
@@ -39,7 +39,7 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
     if (!m_aut_file.is_open())
     {
       mCRL2log(log::error) << "cannot open '" << m_options.filename << "' for writing" << std::endl;
-      exit(EXIT_FAILURE);
+      std::exit(EXIT_FAILURE);
     }
   }
   else if (m_options.outformat == lts_none)
@@ -95,8 +95,7 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
     }
   }
   m_generator = new lps::next_state_generator(specification, rewriter, m_options.use_enumeration_caching);
-
-  m_main_subset = &m_generator->all_summands();
+  m_main_subset = m_generator->all_summands();
 
   if (m_options.detect_deadlock)
   {
@@ -111,8 +110,13 @@ bool lps2lts_algorithm::initialise_lts_generation(lts_generation_options* option
   return true;
 }
 
-bool lps2lts_algorithm::generate_lts()
+bool lps2lts_algorithm::generate_lts(const lts_generation_options& options)
 {
+  if (!initialise_lts_generation(options))
+  {
+    return false;
+  }
+
   atermpp::term_balanced_tree<data::data_expression> initial_state = m_generator->initial_state();
   m_initial_state_number = 0;
   m_state_numbers.put(initial_state);
@@ -144,7 +148,8 @@ bool lps2lts_algorithm::generate_lts()
                     << " and " << m_number_of_transitions << " transition"
                     << ((m_number_of_transitions == 1) ? "" : "s") << ")"
                     << std::endl;
-  return true;
+
+  return finalise_lts_generation();
 }
 
 bool lps2lts_algorithm::finalise_lts_generation()
@@ -184,9 +189,8 @@ bool lps2lts_algorithm::finalise_lts_generation()
 std::pair<std::size_t, bool>
 lps2lts_algorithm::add_target_state(const lps::state& source_state, const lps::state& target_state)
 {
-  std::pair<std::size_t, bool> destination_state_number;
-  destination_state_number = m_state_numbers.put(target_state);
-  if (destination_state_number.second) // The state is new.
+  std::pair<std::size_t, bool> target_state_number = m_state_numbers.put(target_state);
+  if (target_state_number.second) // The state is new.
   {
     m_number_of_states++;
     if (m_options.outformat != lts_none && m_options.outformat != lts_aut)
@@ -194,7 +198,7 @@ lps2lts_algorithm::add_target_state(const lps::state& source_state, const lps::s
       m_output_lts.add_state(state_label_lts(target_state));
     }
   }
-  return destination_state_number;
+  return target_state_number;
 }
 
 bool
@@ -204,13 +208,11 @@ lps2lts_algorithm::add_transition(const lps::state& source_state, const lps::nex
   std::size_t source_state_number;
   source_state_number = m_state_numbers[source_state];
 
-  const lps::state& destination = transition.target_state;
-  const std::pair<std::size_t, bool> destination_state_number = add_target_state(source_state, destination);
+  const std::pair<std::size_t, bool> target_state_number = add_target_state(source_state, transition.target_state);
 
   if (m_options.outformat == lts_aut)
   {
-    m_aut_file << "(" << source_state_number << ",\"" << lps::pp(transition.action) << "\","
-               << destination_state_number.first << ")" << std::endl;
+    m_aut_file << "(" << source_state_number << ",\"" << lps::pp(transition.action) << "\"," << target_state_number.first << ")" << std::endl;
   }
   else if (m_options.outformat != lts_none)
   {
@@ -221,13 +223,11 @@ lps2lts_algorithm::add_transition(const lps::state& source_state, const lps::nex
       assert(action_number == action_label_number.first);
       static_cast <void>(action_number); // Avoid a warning when compiling in non debug mode.
     }
-
-    m_output_lts.add_transition(
-            mcrl2::lts::transition(source_state_number, action_label_number.first, destination_state_number.first));
+    m_output_lts.add_transition(mcrl2::lts::transition(source_state_number, action_label_number.first, target_state_number.first));
   }
 
   m_number_of_transitions++;
-  return destination_state_number.second;
+  return target_state_number.second;
 }
 
 // The function below checks whether in the set of outgoing transitions,
@@ -272,7 +272,7 @@ void lps2lts_algorithm::generate_transitions(const lps::state& state,
   try
   {
     enumeration_queue.clear();
-    lps::next_state_generator::iterator it(m_generator->begin(state, *m_main_subset, &enumeration_queue));
+    lps::next_state_generator::iterator it(m_generator->begin(state, m_main_subset, &enumeration_queue));
     while (it)
     {
       transitions.push_back(*it++);
@@ -346,8 +346,7 @@ void lps2lts_algorithm::generate_lts_breadth_first()
 
   if (current_state == m_options.max_states)
   {
-    mCRL2log(log::verbose) << "explored the maximum number (" << m_options.max_states << ") of states, terminating."
-                      << std::endl;
+    mCRL2log(log::verbose) << "explored the maximum number (" << m_options.max_states << ") of states, terminating." << std::endl;
   }
 }
 
