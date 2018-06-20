@@ -287,7 +287,7 @@ void lps2lts_algorithm::generate_transitions(const lps::state& state,
 
   if (m_options.detect_deadlock && transitions.empty())
   {
-    // save_deadlock(state);
+    mCRL2log(info) << "deadlock-detect: deadlock found (state index: " << m_state_numbers.index(state) <<  ").\n";
   }
 
   if (m_options.detect_nondeterminism)
@@ -295,9 +295,7 @@ void lps2lts_algorithm::generate_transitions(const lps::state& state,
     next_state_generator::transition nondeterministic_transition;
     if (is_nondeterministic(transitions, nondeterministic_transition))
     {
-      // save the trace to the nondeterministic state and one transition to indicate
-      // which transition is nondeterministic. 
-      // save_nondeterministic_state(state, nondeterministic_transition);
+      mCRL2log(info) << "Nondeterministic state found (state index: " << m_state_numbers.index(state) <<  ").\n";
     }
   }
 }
