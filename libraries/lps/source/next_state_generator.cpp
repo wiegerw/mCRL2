@@ -83,203 +83,33 @@ next_state_generator::next_state_generator(
   data::mutable_indexed_substitution<> sigma;
   m_initial_state = state(initial_state_raw.begin(),initial_state_raw.size(), [&](const data::data_expression& x) { return m_rewriter(x, m_substitution); });
 
-  m_all_summands = summand_subset(this, use_summand_pruning);
+  m_all_summands = summand_subset(this);
 }
 
-next_state_generator::summand_subset::summand_subset(next_state_generator* generator, bool use_summand_pruning)
-        : m_generator(generator),
-          m_use_summand_pruning(use_summand_pruning)
+next_state_generator::summand_subset::summand_subset(next_state_generator* generator)
+  : m_generator(generator)
 {
-  if (m_use_summand_pruning)
+  for (std::size_t i = 0; i < generator->m_summands.size(); i++)
   {
-    m_pruning_tree.summand_subset = atermpp::detail::shared_subset<next_state_summand>(generator->m_summands);
-    build_pruning_parameters(generator->m_specification.process().action_summands());
+    m_summands.push_back(i);
   }
-  else
-  {
-    for (std::size_t i = 0; i < generator->m_summands.size(); i++)
-    {
-      m_summands.push_back(i);
-    }
-  }
-}
-
-bool next_state_generator::summand_subset::summand_set_contains(
-        const std::set<action_summand>& summand_set,
-        const next_state_generator::next_state_summand& summand)
-{
-  return summand_set.count(*summand.summand) > 0;
 }
 
 next_state_generator::summand_subset::summand_subset(
         next_state_generator* generator,
         const action_summand_vector& summands,
         bool use_summand_pruning)
-        : m_generator(generator),
-          m_use_summand_pruning(use_summand_pruning)
+        : m_generator(generator)
 {
-  std::set<action_summand> summand_set;
-  for (const action_summand& i: summands)
+  std::set<action_summand> summand_set(summands.begin(), summands.end());
+  for (std::size_t i = 0; i < generator->m_summands.size(); i++)
   {
-    summand_set.insert(i);
-  }
-
-  if (m_use_summand_pruning)
-  {
-    atermpp::detail::shared_subset<next_state_summand> full_set(generator->m_summands);
-    m_pruning_tree.summand_subset = atermpp::detail::shared_subset<next_state_summand>(full_set, std::bind(
-            next_state_generator::summand_subset::summand_set_contains, summand_set, std::placeholders::_1));
-    build_pruning_parameters(summands);
-  }
-  else
-  {
-    for (std::size_t i = 0; i < generator->m_summands.size(); i++)
+    if (summand_set.find(*generator->m_summands[i].summand) != summand_set.end())
     {
-      if (summand_set.count(*generator->m_summands[i].summand) > 0)
-      {
-        m_summands.push_back(i);
-      }
+      m_summands.push_back(i);
     }
   }
 }
-
-static float condition_selectivity(const data::data_expression& e, const data::variable& v)
-{
-  if (data::sort_bool::is_and_application(e))
-  {
-    return condition_selectivity(data::binary_left(atermpp::down_cast<data::application>(e)), v)
-           + condition_selectivity(data::binary_right(atermpp::down_cast<data::application>(e)), v);
-  }
-  else if (data::sort_bool::is_or_application(e))
-  {
-    float sum = 0;
-    std::size_t count = 0;
-    std::list<data::data_expression> terms;
-    terms.push_back(e);
-    while (!terms.empty())
-    {
-      data::data_expression expression = terms.front();
-      terms.pop_front();
-      if (data::sort_bool::is_or_application(expression))
-      {
-        terms.push_back(data::binary_left(atermpp::down_cast<data::application>(e)));
-        terms.push_back(data::binary_right(atermpp::down_cast<data::application>(e)));
-      }
-      else
-      {
-        sum += condition_selectivity(expression, v);
-        count++;
-      }
-    }
-    return sum / count;
-  }
-  else if (is_equal_to_application(e))
-  {
-    const data::data_expression& left = data::binary_left(atermpp::down_cast<data::application>(e));
-    const data::data_expression& right = data::binary_right(atermpp::down_cast<data::application>(e));
-
-    if (data::is_variable(left) && data::variable(left) == v)
-    {
-      return 1;
-    }
-    else if (data::is_variable(right) && data::variable(right) == v)
-    {
-      return 1;
-    }
-    else
-    {
-      return 0;
-    }
-  }
-  else
-  {
-    return 0;
-  }
-}
-
-struct parameter_score
-{
-  std::size_t parameter_id;
-  float score;
-
-  parameter_score() = default;
-
-  parameter_score(std::size_t id, float score_)
-          : parameter_id(id), score(score_)
-  {
-  }
-};
-
-static bool parameter_score_compare(const parameter_score& left, const parameter_score& right)
-{
-  return left.score > right.score;
-}
-
-void next_state_generator::summand_subset::build_pruning_parameters(const action_summand_vector& summands)
-{
-  std::vector<parameter_score> parameters;
-
-  for (std::size_t i = 0; i < m_generator->m_process_parameters.size(); i++)
-  {
-    parameters.emplace_back(i, 0);
-    for (const auto& summand : summands)
-    {
-      parameters[i].score += condition_selectivity(summand.condition(), m_generator->m_process_parameters[i]);
-    }
-  }
-
-  std::sort(parameters.begin(), parameters.end(), parameter_score_compare);
-
-  for (std::size_t i = 0; i < m_generator->m_process_parameters.size(); i++)
-  {
-    if (parameters[i].score > 0)
-    {
-      m_pruning_parameters.push_back(parameters[i].parameter_id);
-      mCRL2log(log::verbose) << "using pruning parameter "
-                             << m_generator->m_process_parameters[parameters[i].parameter_id].name() << std::endl;
-    }
-  }
-}
-
-bool next_state_generator::summand_subset::is_not_false(const next_state_generator::next_state_summand& summand)
-{
-  return m_generator->m_rewriter(summand.condition, m_pruning_substitution) != data::sort_bool::false_();
-}
-
-atermpp::detail::shared_subset<next_state_generator::next_state_summand>::iterator
-next_state_generator::summand_subset::begin(const state& state)
-{
-  assert(m_use_summand_pruning);
-
-  for (std::size_t m_pruning_parameter: m_pruning_parameters)
-  {
-    const data::variable& v = m_generator->m_process_parameters[m_pruning_parameter];
-    m_pruning_substitution[v] = v;
-  }
-
-  pruning_tree_node* node = &m_pruning_tree;
-  for (std::size_t parameter: m_pruning_parameters)
-  {
-    const data::data_expression& argument = state.element_at(parameter, m_generator->m_process_parameters.size());
-    m_pruning_substitution[m_generator->m_process_parameters[parameter]] = argument;
-    auto position = node->children.find(argument);
-    if (position == node->children.end())
-    {
-      pruning_tree_node child;
-      child.summand_subset = atermpp::detail::shared_subset<next_state_summand>(node->summand_subset, std::bind(
-              &next_state_generator::summand_subset::is_not_false, this, std::placeholders::_1));
-      node->children[argument] = child;
-      node = &node->children[argument];
-    }
-    else
-    {
-      node = &position->second;
-    }
-  }
-
-  return node->summand_subset.begin();
-}
-
 
 next_state_generator::iterator::iterator(next_state_generator* generator, const state& state,
                                          next_state_generator::rewriter_substitution* substitution,
@@ -288,20 +118,12 @@ next_state_generator::iterator::iterator(next_state_generator* generator, const 
           m_state(state),
           m_substitution(substitution),
           m_single_summand(false),
-          m_use_summand_pruning(summand_subset.m_use_summand_pruning),
           m_summand(nullptr),
           m_caching(false),
           m_enumeration_queue(enumeration_queue)
 {
-  if (m_use_summand_pruning)
-  {
-    m_summand_subset_iterator = summand_subset.begin(state);
-  }
-  else
-  {
-    m_summand_iterator = summand_subset.m_summands.begin();
-    m_summand_iterator_end = summand_subset.m_summands.end();
-  }
+  m_summand_iterator = summand_subset.m_summands.begin();
+  m_summand_iterator_end = summand_subset.m_summands.end();
 
   std::size_t j = 0;
   for (auto i = state.begin(); i != state.end(); ++i, ++j)
@@ -320,7 +142,6 @@ next_state_generator::iterator::iterator(next_state_generator* generator, const 
           m_substitution(substitution),
           m_single_summand(true),
           m_single_summand_index(summand_index),
-          m_use_summand_pruning(false),
           m_summand(nullptr),
           m_caching(false),
           m_enumeration_queue(enumeration_queue)
@@ -358,15 +179,6 @@ void next_state_generator::iterator::increment()
         return;
       }
       m_summand = &(m_generator->m_summands[m_single_summand_index]);
-    }
-    else if (m_use_summand_pruning)
-    {
-      if (!m_summand_subset_iterator)
-      {
-        m_generator = nullptr;
-        return;
-      }
-      m_summand = &(*m_summand_subset_iterator++);
     }
     else
     {

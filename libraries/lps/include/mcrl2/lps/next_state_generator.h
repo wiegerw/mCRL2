@@ -60,12 +60,6 @@ class next_state_generator
       std::map<enumeration_cache_key, enumeration_cache_value> enumeration_cache;
     };
 
-    struct pruning_tree_node
-    {
-      atermpp::detail::shared_subset<next_state_summand> summand_subset;
-      std::map<data::data_expression, pruning_tree_node> children;
-    };
-
   public:
     class iterator;
 
@@ -79,25 +73,14 @@ class next_state_generator
         summand_subset() = default;
 
         /// \brief Constructs the full summand subset for the given generator.
-        summand_subset(next_state_generator *generator, bool use_summand_pruning);
+        summand_subset(next_state_generator *generator);
 
         /// \brief Constructs the summand subset containing the given commands.
         summand_subset(next_state_generator* generator, const action_summand_vector& summands, bool use_summand_pruning);
 
       private:
         next_state_generator *m_generator = nullptr;
-        bool m_use_summand_pruning = false;
-
         std::vector<std::size_t> m_summands;
-
-        pruning_tree_node m_pruning_tree;
-        std::vector<std::size_t> m_pruning_parameters;
-        rewriter_substitution m_pruning_substitution;
-
-        static bool summand_set_contains(const std::set<action_summand>& summand_set, const next_state_summand& summand);
-        void build_pruning_parameters(const action_summand_vector& summands);
-        bool is_not_false(const next_state_summand& summand);
-        atermpp::detail::shared_subset<next_state_summand>::iterator begin(const lps::state& state);
     };
 
     struct transition
@@ -117,7 +100,6 @@ class next_state_generator
 
         bool m_single_summand;
         std::size_t m_single_summand_index;
-        bool m_use_summand_pruning;
         std::vector<std::size_t>::iterator m_summand_iterator;
         std::vector<std::size_t>::iterator m_summand_iterator_end;
         atermpp::detail::shared_subset<next_state_summand>::iterator m_summand_subset_iterator;
