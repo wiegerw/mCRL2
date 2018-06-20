@@ -29,12 +29,9 @@ namespace lts {
 class lps2lts_algorithm
 {
   private:
-    typedef lps::next_state_generator next_state_generator;
-
-  private:
     lts_generation_options m_options;
-    next_state_generator* m_generator = nullptr;
-    next_state_generator::summand_subset* m_main_subset = nullptr;
+    lps::next_state_generator* m_generator = nullptr;
+    lps::next_state_generator::summand_subset* m_main_subset = nullptr;
 
     atermpp::indexed_set<lps::state> m_state_numbers;
 
@@ -76,12 +73,12 @@ class lps2lts_algorithm
     }
 
   private:
-    bool is_nondeterministic(std::vector<next_state_generator::transition>& transitions, next_state_generator::transition& nondeterminist_transition);
+    bool is_nondeterministic(std::vector<lps::next_state_generator::transition>& transitions, lps::next_state_generator::transition& nondeterminist_transition);
     std::pair<std::size_t, bool> add_target_state(const lps::state& source_state, const lps::state& target_state);
-    bool add_transition(const lps::state& source_state, const next_state_generator::transition& transition);
+    bool add_transition(const lps::state& source_state, const lps::next_state_generator::transition& transition);
     void generate_transitions(const lps::state& state,
-                              std::vector<next_state_generator::transition>& transitions,
-                              next_state_generator::enumerator_queue& enumeration_queue
+                              std::vector<lps::next_state_generator::transition>& transitions,
+                              lps::next_state_generator::enumerator_queue& enumeration_queue
     );
     void generate_lts_breadth_first();
 };

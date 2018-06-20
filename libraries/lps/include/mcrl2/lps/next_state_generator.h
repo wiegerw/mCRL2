@@ -20,7 +20,6 @@
 #include "mcrl2/atermpp/detail/shared_subset.h"
 #include "mcrl2/data/enumerator.h"
 #include "mcrl2/lps/state.h"
-#include "mcrl2/lps/state_probability_pair.h"
 #include "mcrl2/lps/specification.h"
 
 namespace mcrl2 {
@@ -54,7 +53,6 @@ class next_state_generator
       std::vector<next_state_action_label> action_label;
       data::data_expression time;
 
-      // enumeration caching
       std::vector<std::size_t> condition_parameters;
       atermpp::function_symbol condition_arguments_function;
       std::map<enumeration_cache_key, enumeration_cache_value> enumeration_cache;
@@ -73,10 +71,10 @@ class next_state_generator
         summand_subset() = default;
 
         /// \brief Constructs the full summand subset for the given generator.
-        summand_subset(next_state_generator *generator);
+        explicit summand_subset(next_state_generator *generator);
 
         /// \brief Constructs the summand subset containing the given commands.
-        summand_subset(next_state_generator* generator, const action_summand_vector& summands, bool use_summand_pruning);
+        summand_subset(next_state_generator* generator, const action_summand_vector& summands);
 
       private:
         next_state_generator *m_generator = nullptr;
@@ -102,7 +100,6 @@ class next_state_generator
         std::size_t m_single_summand_index;
         std::vector<std::size_t>::iterator m_summand_iterator;
         std::vector<std::size_t>::iterator m_summand_iterator_end;
-        atermpp::detail::shared_subset<next_state_summand>::iterator m_summand_subset_iterator;
         next_state_summand *m_summand;
 
         bool m_cached;
@@ -112,7 +109,6 @@ class next_state_generator
         bool m_caching;
         enumeration_cache_key m_enumeration_cache_key;
         enumeration_cache_value m_enumeration_log;
-
         enumerator_queue* m_enumeration_queue;
 
         /// \brief Enumerate <variables, phi> with substitution sigma.
@@ -179,11 +175,10 @@ class next_state_generator
     /// \param spec The process specification
     /// \param rewriter The rewriter used
     /// \param use_enumeration_caching Cache intermediate enumeration results
-    /// \param use_summand_pruning Preprocess summands using pruning strategy.
     next_state_generator(const specification& spec,
                          const data::rewriter& rewriter,
-                         bool use_enumeration_caching = false,
-                         bool use_summand_pruning = false);
+                         bool use_enumeration_caching = false
+                        );
 
     /// \brief Returns an iterator for generating the successors of the given state.
     iterator begin(const state& state, enumerator_queue* enumeration_queue)
@@ -223,7 +218,7 @@ class next_state_generator
     }
 
     /// \brief Returns a reference to the summand subset containing all summands.
-    summand_subset& full_subset()
+    summand_subset& all_summands()
     {
       return m_all_summands;
     }
