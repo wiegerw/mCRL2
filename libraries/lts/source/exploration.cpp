@@ -6,8 +6,9 @@
 // (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 
-#include <iomanip>
 #include <ctime>
+#include <iomanip>
+#include <memory>
 
 #include "mcrl2/utilities/logger.h"
 #include "mcrl2/lps/resolve_name_clashes.h"
@@ -21,17 +22,8 @@ namespace mcrl2 {
 
 namespace lts {
 
-bool lps2lts_algorithm::initialise_lts_generation(const lts_generation_options& options)
+void lps2lts_algorithm::on_start_exploration()
 {
-  m_options = options;
-  m_state_numbers = atermpp::indexed_set<lps::state>(m_options.initial_table_size, 50);
-  m_number_of_states = 0;
-  m_number_of_transitions = 0;
-  m_level = 1;
-
-  lps::specification specification(m_options.specification);
-  resolve_summand_variable_name_clashes(specification);
-
   if (m_options.outformat == lts_aut)
   {
     mCRL2log(log::verbose) << "writing state space in AUT format to '" << m_options.filename << "'." << std::endl;
@@ -49,77 +41,12 @@ bool lps2lts_algorithm::initialise_lts_generation(const lts_generation_options& 
   else
   {
     mCRL2log(log::verbose) << "writing state space in "
-                      << "unknown" // mcrl2::lts::detail::string_for_type(m_options.outformat)
-                      << " format to '" << m_options.filename << "'." << std::endl;
-    m_output_lts.set_data(specification.data());
-    m_output_lts.set_process_parameters(specification.process().process_parameters());
-    m_output_lts.set_action_label_declarations(specification.action_labels());
+                           << "unknown" // mcrl2::lts::detail::string_for_type(m_options.outformat)
+                           << " format to '" << m_options.filename << "'." << std::endl;
+    m_output_lts.set_data(m_options.specification.data());
+    m_output_lts.set_process_parameters(m_options.specification.process().process_parameters());
+    m_output_lts.set_action_label_declarations(m_options.specification.action_labels());
   }
-
-  if (m_options.instantiate_global_variables)
-  {
-    lps::detail::instantiate_global_variables(specification);
-  }
-
-  data::rewriter rewriter;
-  if (m_options.remove_unused_rewrite_rules)
-  {
-    mCRL2log(log::verbose) << "removing unused parts of the data specification." << std::endl;
-    std::set<data::function_symbol> extra_function_symbols = lps::find_function_symbols(specification);
-    extra_function_symbols.insert(data::sort_real::minus(data::sort_real::real_(), data::sort_real::real_()));
-
-    rewriter = data::rewriter(specification.data(),
-                              data::used_data_equation_selector(specification.data(), extra_function_symbols,
-                                                                specification.global_variables()), m_options.strat);
-  }
-  else
-  {
-    rewriter = data::rewriter(specification.data(), m_options.strat);
-  }
-
-  // Apply the one point rewriter to the linear process specification. 
-  // This simplifies expressions of the shape exists x:X . (x == e) && phi to phi[x:=e], enabling
-  // more lps's to generate lts's. The overhead of this rewriter is limited.
-  lps::one_point_rule_rewrite(specification);
-
-  lps::action_summand_vector prioritised_summands;
-  lps::action_summand_vector nonprioritised_summands;
-  lps::action_summand_vector tau_summands;
-
-  bool compute_actions = m_options.outformat != lts_none;
-  if (!compute_actions)
-  {
-    for (auto& summand: specification.process().action_summands())
-    {
-      summand.multi_action().actions() = process::action_list();
-    }
-  }
-  m_generator = new lps::next_state_generator(specification, rewriter, m_options.use_enumeration_caching);
-  m_main_subset = m_generator->all_summands();
-
-  if (m_options.detect_deadlock)
-  {
-    mCRL2log(log::verbose) << "Detect deadlocks.\n";
-  }
-
-  if (m_options.detect_nondeterminism)
-  {
-    mCRL2log(log::verbose) << "Detect nondeterministic states.\n";
-  }
-
-  return true;
-}
-
-bool lps2lts_algorithm::generate_lts(const lts_generation_options& options)
-{
-  if (!initialise_lts_generation(options))
-  {
-    return false;
-  }
-
-  atermpp::term_balanced_tree<data::data_expression> initial_state = m_generator->initial_state();
-  m_initial_state_number = 0;
-  m_state_numbers.put(initial_state);
 
   if (m_options.outformat == lts_aut)
   {
@@ -128,38 +55,45 @@ bool lps2lts_algorithm::generate_lts(const lts_generation_options& options)
   }
   else if (m_options.outformat != lts_none)
   {
-    m_initial_state_number = m_output_lts.add_state(state_label_lts(m_generator->initial_state()));
+    auto m_initial_state_number = m_output_lts.add_state(state_label_lts(m_generator->initial_state()));
     m_output_lts.set_initial_state(m_initial_state_number);
   }
-  m_number_of_states = 1;
-
-  mCRL2log(log::verbose) << "generating state space with '" << es_breadth << "' strategy...\n";
-
-  if (m_options.max_states == 0)
-  {
-    return true;
-  }
-
-  generate_lts_breadth_first();
-
-  mCRL2log(log::verbose) << "done with state space generation ("
-                    << m_level - 1 << " level" << ((m_level == 2) ? "" : "s") << ", "
-                    << m_number_of_states << " state" << ((m_number_of_states == 1) ? "" : "s")
-                    << " and " << m_number_of_transitions << " transition"
-                    << ((m_number_of_transitions == 1) ? "" : "s") << ")"
-                    << std::endl;
-
-  return finalise_lts_generation();
 }
 
-bool lps2lts_algorithm::finalise_lts_generation()
+void lps2lts_algorithm::on_new_state(const lps::state& target_state)
+{
+  if (m_options.outformat != lts_none && m_options.outformat != lts_aut)
+  {
+    m_output_lts.add_state(state_label_lts(target_state));
+  }
+}
+
+void lps2lts_algorithm::on_transition(std::size_t source_state_number, const lps::multi_action& action, std::size_t target_state_number)
+{
+  if (m_options.outformat == lts_aut)
+  {
+    m_aut_file << "(" << source_state_number << ",\"" << lps::pp(action) << "\"," << target_state_number << ")" << std::endl;
+  }
+  else if (m_options.outformat != lts_none)
+  {
+    std::pair<size_t, bool> action_label_number = m_action_label_numbers.put(action.actions());
+    if (action_label_number.second)
+    {
+      std::size_t action_number = m_output_lts.add_action(action_label_lts(action));
+      assert(action_number == action_label_number.first);
+      static_cast <void>(action_number); // Avoid a warning when compiling in non debug mode.
+    }
+    m_output_lts.add_transition(mcrl2::lts::transition(source_state_number, action_label_number.first, target_state_number));
+  }
+}
+
+void lps2lts_algorithm::on_end_exploration()
 {
   if (m_options.outformat == lts_aut)
   {
     m_aut_file.flush();
     m_aut_file.seekp(0);
-    m_aut_file << "des (" << m_initial_state_number << "," << m_number_of_transitions << "," << m_number_of_states
-               << ")";
+    m_aut_file << "des (0," << m_number_of_transitions << "," << m_number_of_states << ")";
     m_aut_file.close();
   }
   else if (m_options.outformat != lts_none)
@@ -180,6 +114,93 @@ bool lps2lts_algorithm::finalise_lts_generation()
         assert(0);
     }
   }
+}
+
+bool lps2lts_algorithm::initialise_lts_generation(const lts_generation_options& options)
+{
+  m_options = options;
+  m_state_numbers = atermpp::indexed_set<lps::state>(m_options.initial_table_size, 50);
+  m_number_of_states = 0;
+  m_number_of_transitions = 0;
+  m_level = 1;
+
+  // preprocess the LPS
+  lps::specification& lpsspec = m_options.specification;
+  lps::resolve_summand_variable_name_clashes(lpsspec);
+  if (m_options.instantiate_global_variables)
+  {
+    lps::detail::instantiate_global_variables(lpsspec);
+  }
+  lps::one_point_rule_rewrite(lpsspec);
+
+  data::rewriter rewriter;
+  if (m_options.remove_unused_rewrite_rules)
+  {
+    mCRL2log(log::verbose) << "removing unused parts of the data specification." << std::endl;
+    std::set<data::function_symbol> extra_function_symbols = lps::find_function_symbols(lpsspec);
+    extra_function_symbols.insert(data::sort_real::minus(data::sort_real::real_(), data::sort_real::real_()));
+
+    rewriter = data::rewriter(lpsspec.data(),
+                              data::used_data_equation_selector(lpsspec.data(), extra_function_symbols,
+                                                                lpsspec.global_variables()), m_options.strat);
+  }
+  else
+  {
+    rewriter = data::rewriter(lpsspec.data(), m_options.strat);
+  }
+
+  bool compute_actions = m_options.outformat != lts_none;
+  if (!compute_actions)
+  {
+    for (auto& summand: lpsspec.process().action_summands())
+    {
+      summand.multi_action().actions() = process::action_list();
+    }
+  }
+  m_generator = std::make_unique<lps::next_state_generator>(lpsspec, rewriter, m_options.use_enumeration_caching);
+  m_main_subset = m_generator->all_summands();
+
+  if (m_options.detect_deadlock)
+  {
+    mCRL2log(log::verbose) << "Detect deadlocks.\n";
+  }
+
+  if (m_options.detect_nondeterminism)
+  {
+    mCRL2log(log::verbose) << "Detect nondeterministic states.\n";
+  }
+  return true;
+}
+
+bool lps2lts_algorithm::generate_lts(const lts_generation_options& options)
+{
+  if (!initialise_lts_generation(options))
+  {
+    return false;
+  }
+
+  on_start_exploration();
+
+  m_state_numbers.put(m_generator->initial_state());
+  m_number_of_states = 1;
+
+  mCRL2log(log::verbose) << "generating state space with '" << es_breadth << "' strategy...\n";
+
+  if (m_options.max_states == 0)
+  {
+    return true;
+  }
+
+  generate_lts_breadth_first();
+
+  mCRL2log(log::verbose) << "done with state space generation ("
+                    << m_level - 1 << " level" << ((m_level == 2) ? "" : "s") << ", "
+                    << m_number_of_states << " state" << ((m_number_of_states == 1) ? "" : "s")
+                    << " and " << m_number_of_transitions << " transition"
+                    << ((m_number_of_transitions == 1) ? "" : "s") << ")"
+                    << std::endl;
+
+  on_end_exploration();
 
   return true;
 }
@@ -193,10 +214,7 @@ lps2lts_algorithm::add_target_state(const lps::state& source_state, const lps::s
   if (target_state_number.second) // The state is new.
   {
     m_number_of_states++;
-    if (m_options.outformat != lts_none && m_options.outformat != lts_aut)
-    {
-      m_output_lts.add_state(state_label_lts(target_state));
-    }
+    on_new_state(target_state);
   }
   return target_state_number;
 }
@@ -205,26 +223,10 @@ bool
 lps2lts_algorithm::add_transition(const lps::state& source_state, const lps::next_state_generator::transition& transition)
 {
 
-  std::size_t source_state_number;
-  source_state_number = m_state_numbers[source_state];
-
+  std::size_t source_state_number = m_state_numbers[source_state];
   const std::pair<std::size_t, bool> target_state_number = add_target_state(source_state, transition.target_state);
 
-  if (m_options.outformat == lts_aut)
-  {
-    m_aut_file << "(" << source_state_number << ",\"" << lps::pp(transition.action) << "\"," << target_state_number.first << ")" << std::endl;
-  }
-  else if (m_options.outformat != lts_none)
-  {
-    std::pair<size_t, bool> action_label_number = m_action_label_numbers.put(transition.action.actions());
-    if (action_label_number.second)
-    {
-      std::size_t action_number = m_output_lts.add_action(action_label_lts(transition.action));
-      assert(action_number == action_label_number.first);
-      static_cast <void>(action_number); // Avoid a warning when compiling in non debug mode.
-    }
-    m_output_lts.add_transition(mcrl2::lts::transition(source_state_number, action_label_number.first, target_state_number.first));
-  }
+  on_transition(source_state_number, transition.action, target_state_number.first);
 
   m_number_of_transitions++;
   return target_state_number.second;
