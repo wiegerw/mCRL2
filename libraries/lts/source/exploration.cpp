@@ -124,6 +124,15 @@ void lps2lts_algorithm::initialise_lts_generation(const lts_generation_options& 
       mCRL2log(error) << "cannot open '" << m_options.lts << "' for writing" << std::endl;
       std::exit(EXIT_FAILURE);
     }
+
+    std::string states_file_name = m_options.lts + ".states";
+    mCRL2log(log::verbose) << "writing state labels to '" << states_file_name << "'." << std::endl;
+    m_aut_states_file.open(states_file_name.c_str());
+    if (!m_aut_states_file.is_open())
+    {
+      mCRL2log(error) << "cannot open '" << states_file_name << "' for writing" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
   }
   else if (m_options.outformat == lts_none)
   {
@@ -334,6 +343,10 @@ bool lps2lts_algorithm::generate_lts(const lts_generation_options& options)
       if (m_state_numbers.put(i->state()).second && m_options.outformat != lts_aut) // The state is new.
       {
         m_output_lts.add_state(state_label_lts(i->state()));
+      }
+      if (m_options.outformat == lts_aut)
+      {
+        m_aut_states_file << pp(state_label_lts(i->state())) << "\n";
       }
     }
   }
@@ -888,6 +901,7 @@ std::pair<std::size_t, bool> lps2lts_algorithm::add_target_state(const lps::stat
       assert(!m_options.bithashing);
       m_output_lts.add_state(state_label_lts(target_state));
     }
+    m_aut_states_file << pp(state_label_lts(target_state)) << "\n";
   }
   return destination_state_number;
 }

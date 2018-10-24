@@ -76,6 +76,7 @@ class lps2lts_algorithm
     probabilistic_lts_lts_t m_output_lts;
     atermpp::indexed_set<process::action_list> m_action_label_numbers;
     std::ofstream m_aut_file;
+    std::ofstream m_aut_states_file;
 
     bool m_maintain_traces;
     bool m_value_prioritize;
